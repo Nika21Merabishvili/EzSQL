@@ -661,3 +661,355 @@ body {
 .schema-columns--indented .schema-column {
   padding-left: 38px;
 }
+
+/* =========================================================
+   Custom Folders — additions
+   ========================================================= */
+
+/* ---------- Header: actions wrapper ---------------------- */
+
+.schema-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* "+ Folder" button */
+.schema-new-folder-btn {
+  background: none;
+  border: 1px solid #2d3448;
+  color: #8892a4;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+  line-height: 1.6;
+}
+
+.schema-new-folder-btn:hover {
+  color: #00d4aa;
+  border-color: #00d4aa55;
+}
+
+/* ---------- Inline folder-name input rows ---------------- */
+
+.schema-new-folder-row,
+.schema-rename-row {
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid #2d3448;
+  background: #1a1d27;
+  flex-shrink: 0;
+}
+
+.schema-folder-input {
+  width: 100%;
+  background: #252b3b;
+  border: 1px solid #2d3448;
+  border-radius: 4px;
+  color: #e8eaf0;
+  padding: 5px 8px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.schema-folder-input:focus {
+  border-color: #00d4aa;
+}
+
+.schema-input-error {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #e05252;
+  line-height: 1.4;
+}
+
+.schema-input-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #555e6e;
+  line-height: 1.4;
+}
+
+.schema-input-hint strong {
+  color: #a8b8d0;
+}
+
+/* ---------- Custom folder header wrap -------------------- */
+
+/* Flex row: collapsible button (flex:1) + hover controls */
+.schema-folder-header-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.schema-folder-header-wrap .schema-schema-row {
+  flex: 1;
+  min-width: 0;
+  width: auto; /* override the 100% default */
+}
+
+/* Distinguish custom folder name from real schema name */
+.schema-schema-row--custom .schema-schema-name {
+  color: #b0a8d0;
+}
+
+/* "(custom)" badge */
+.schema-custom-badge {
+  font-size: 9px;
+  color: #555e6e;
+  font-style: italic;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+/* ---------- Rename / delete controls --------------------- */
+
+.schema-folder-controls {
+  display: none;
+  align-items: center;
+  gap: 1px;
+  padding-right: 6px;
+  flex-shrink: 0;
+}
+
+.schema-folder-header-wrap:hover .schema-folder-controls {
+  display: flex;
+}
+
+.schema-folder-ctrl-btn {
+  background: none;
+  border: none;
+  padding: 3px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #555e6e;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.schema-folder-ctrl-btn:hover {
+  color: #8892a4;
+  background: #252b3b;
+}
+
+.schema-folder-ctrl-btn--del:hover {
+  color: #e05252;
+  background: #2d1a1a;
+}
+
+/* ---------- Delete confirmation (inline) ----------------- */
+
+.schema-delete-confirm {
+  margin: 2px 10px 6px;
+  padding: 8px 10px;
+  background: #1a1d27;
+  border: 1px solid #3d2424;
+  border-left: 3px solid #e05252;
+  border-radius: 4px;
+}
+
+.schema-delete-confirm p {
+  font-size: 11px;
+  color: #c8d0e0;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.schema-delete-confirm-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.schema-confirm-btn {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid #2d3448;
+  background: #252b3b;
+  color: #8892a4;
+  transition: background 0.15s, color 0.15s;
+}
+
+.schema-confirm-btn:hover {
+  background: #2d3448;
+  color: #e8eaf0;
+}
+
+.schema-confirm-btn--danger {
+  background: #2d1a1a;
+  border-color: #7d2222;
+  color: #e05252;
+}
+
+.schema-confirm-btn--danger:hover {
+  background: #e05252;
+  border-color: #e05252;
+  color: #fff;
+}
+
+/* ---------- Table row: wrap + move button ---------------- */
+
+/* Flex row: table button (flex:1) + ⋯ button (on hover) */
+.schema-table-row-wrap {
+  display: flex;
+  align-items: center;
+  position: relative; /* anchor for the absolute move-menu */
+}
+
+.schema-table-row-wrap .schema-table-row {
+  flex: 1;
+  min-width: 0;
+  width: auto; /* override the 100% default */
+}
+
+/* ⋯ move button — hidden by default, shown on row hover */
+.schema-move-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #555e6e;
+  padding: 0 7px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 3px;
+  flex-shrink: 0;
+  align-self: stretch;
+  transition: color 0.15s, background 0.15s;
+}
+
+.schema-table-row-wrap:hover .schema-move-btn,
+.schema-move-btn--active {
+  display: flex;
+}
+
+.schema-move-btn:hover,
+.schema-move-btn--active {
+  color: #00d4aa;
+  background: #252b3b;
+}
+
+/* ---------- Move-menu overlay + dropdown ----------------- */
+
+/* Full-viewport transparent layer — click closes the menu */
+.schema-move-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.schema-move-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  min-width: 168px;
+  background: #1e2433;
+  border: 1px solid #2d3448;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.schema-move-menu-label {
+  padding: 5px 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #555e6e;
+  user-select: none;
+}
+
+.schema-move-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #c8d0e0;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+}
+
+.schema-move-menu-item:hover {
+  background: #252b3b;
+  color: #e8eaf0;
+}
+
+.schema-move-menu-item--active {
+  color: #00d4aa;
+}
+
+.schema-move-menu-item--new {
+  color: #8892a4;
+  font-style: italic;
+}
+
+.schema-move-menu-item--new:hover {
+  color: #00d4aa;
+}
+
+.schema-move-menu-divider {
+  height: 1px;
+  background: #2d3448;
+  margin: 3px 0;
+}
+
+/* =========================================================
+   Pinned (active) folder
+   ========================================================= */
+
+/* Accent on the header wrap when the folder is pinned */
+.schema-folder-header-wrap--pinned {
+  border-left: 2px solid #00d4aa;
+}
+
+/* Compensate for the 2px border so text doesn't shift */
+.schema-folder-header-wrap--pinned .schema-schema-row {
+  padding-left: 12px;
+  background: rgba(0, 212, 170, 0.04);
+}
+
+/* When pinned, keep all controls visible (not just on hover) */
+.schema-folder-header-wrap--pinned .schema-folder-controls {
+  display: flex;
+}
+
+/* ---------- Pin button ----------------------------------- */
+
+/* The pin button is inside .schema-folder-controls, so it inherits
+   the show/hide from that container. Additional rules here handle
+   the active (pinned) colour state. */
+
+.schema-folder-ctrl-btn--pin {
+  font-size: 12px;
+  filter: grayscale(1) opacity(0.45); /* muted when not pinned */
+  transition: filter 0.15s, background 0.15s;
+}
+
+.schema-folder-ctrl-btn--pin:hover {
+  filter: grayscale(0) opacity(1);
+  background: #252b3b;
+}
+
+/* Pinned state: full colour, always visible */
+.schema-folder-ctrl-btn.schema-folder-ctrl-btn--pin-active {
+  filter: grayscale(0) opacity(1);
+}
+
+.schema-folder-ctrl-btn.schema-folder-ctrl-btn--pin-active:hover {
+  background: rgba(0, 212, 170, 0.12);
+}
