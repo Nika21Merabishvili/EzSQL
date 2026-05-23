@@ -16,7 +16,8 @@ import { getSchema } from '../api/schemaApi';
 const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) {
   const [schemas, setSchemas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState({}); // { "schema.table": true|false }
+  const [expandedSchemas, setExpandedSchemas] = useState({}); // { "schemaName": true|false }
+  const [expandedTables, setExpandedTables] = useState({});   // { "schema.table": true|false }
 
   // ── Data fetching ────────────────────────────────────────────────────────
 
@@ -25,6 +26,10 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
     const data = await getSchema();
     if (data.schemas) {
       setSchemas(data.schemas);
+      // Default: all schemas expanded
+      const init = {};
+      data.schemas.forEach((s) => { init[s.name] = true; });
+      setExpandedSchemas(init);
     }
     setLoading(false);
   };
@@ -38,11 +43,11 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  const toggleTable = (key) =>
-    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleSchema = (name) =>
+    setExpandedSchemas((prev) => ({ ...prev, [name]: !prev[name] }));
 
-  const allTables = schemas.flatMap((s) => s.tables);
-  const multiSchema = schemas.length > 1;
+  const toggleTable = (key) =>
+    setExpandedTables((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -66,71 +71,88 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
       <div className="schema-tree">
         {loading ? (
           <SkeletonRows />
-        ) : allTables.length === 0 ? (
+        ) : schemas.length === 0 ? (
           <div className="schema-empty">
             No tables yet — run a <code>CREATE TABLE</code> statement to get
             started.
           </div>
         ) : (
-          schemas.map((schema) => (
-            <div key={schema.name} className="schema-group">
-              {multiSchema && (
-                <div className="schema-db-label">{schema.name}</div>
-              )}
+          schemas.map((schema) => {
+            const schemaOpen = !!expandedSchemas[schema.name];
 
-              {schema.tables.map((table) => {
-                const key = `${schema.name}.${table.name}`;
-                const isOpen = !!expanded[key];
+            return (
+              <div key={schema.name} className="schema-group">
+                {/* Schema header — always shown, always collapsible */}
+                <button
+                  className="schema-schema-row"
+                  onClick={() => toggleSchema(schema.name)}
+                  title={`Schema: ${schema.name}`}
+                  aria-expanded={schemaOpen}
+                >
+                  <span className="schema-chevron" aria-hidden="true">
+                    {schemaOpen ? '▾' : '▸'}
+                  </span>
+                  <span className="schema-schema-name">{schema.name}</span>
+                  <span className="schema-table-count">
+                    {schema.tables.length}&nbsp;table{schema.tables.length !== 1 ? 's' : ''}
+                  </span>
+                </button>
 
-                return (
-                  <div key={key} className="schema-table-item">
-                    {/* Row: clicking the button toggles; clicking the NAME also inserts SELECT */}
-                    <button
-                      className="schema-table-row"
-                      onClick={() => toggleTable(key)}
-                      title={`${table.type === 'view' ? 'View' : 'Table'} — click to expand`}
-                    >
-                      <span className="schema-chevron" aria-hidden="true">
-                        {isOpen ? '▾' : '▸'}
-                      </span>
-                      <span
-                        className="schema-table-name"
-                        title="Click to insert SELECT query"
-                        onClick={(e) => {
-                          // Insert query without preventing the parent toggle.
-                          onInsertQuery(`SELECT * FROM ${table.name} LIMIT 100;`);
-                        }}
-                      >
-                        {table.name}
-                      </span>
-                      <span className="schema-col-count">
-                        {table.columns.length}&nbsp;col{table.columns.length !== 1 ? 's' : ''}
-                      </span>
-                    </button>
+                {/* Tables (visible when schema is expanded) */}
+                {schemaOpen &&
+                  schema.tables.map((table) => {
+                    const key = `${schema.name}.${table.name}`;
+                    const tableOpen = !!expandedTables[key];
 
-                    {/* Column list (shown when expanded) */}
-                    {isOpen && (
-                      <ul className="schema-columns">
-                        {table.columns.map((col) => (
-                          <li key={col.name} className="schema-column">
-                            {col.pk ? (
-                              <span className="schema-pk-icon" title="Primary key">
-                                🔑
-                              </span>
-                            ) : (
-                              <span className="schema-pk-placeholder" />
-                            )}
-                            <span className="schema-col-name">{col.name}</span>
-                            <span className="schema-col-type">{col.type}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))
+                    return (
+                      <div key={key} className="schema-table-item">
+                        {/* Row: clicking the button toggles; clicking the NAME also inserts SELECT */}
+                        <button
+                          className="schema-table-row schema-table-row--indented"
+                          onClick={() => toggleTable(key)}
+                          title={`${table.type === 'view' ? 'View' : 'Table'} — click to expand`}
+                        >
+                          <span className="schema-chevron" aria-hidden="true">
+                            {tableOpen ? '▾' : '▸'}
+                          </span>
+                          <span
+                            className="schema-table-name"
+                            title="Click to insert SELECT query"
+                            onClick={() => {
+                              onInsertQuery(`SELECT * FROM ${table.name} LIMIT 100;`);
+                            }}
+                          >
+                            {table.name}
+                          </span>
+                          <span className="schema-col-count">
+                            {table.columns.length}&nbsp;col{table.columns.length !== 1 ? 's' : ''}
+                          </span>
+                        </button>
+
+                        {/* Column list (shown when table is expanded) */}
+                        {tableOpen && (
+                          <ul className="schema-columns schema-columns--indented">
+                            {table.columns.map((col) => (
+                              <li key={col.name} className="schema-column">
+                                {col.pk ? (
+                                  <span className="schema-pk-icon" title="Primary key">
+                                    🔑
+                                  </span>
+                                ) : (
+                                  <span className="schema-pk-placeholder" />
+                                )}
+                                <span className="schema-col-name">{col.name}</span>
+                                <span className="schema-col-type">{col.type}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            );
+          })
         )}
       </div>
     </aside>

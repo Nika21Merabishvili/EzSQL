@@ -504,7 +504,7 @@ body {
   font-size: 11px;
 }
 
-/* ---------- Schema / database label ---------------------- */
+/* ---------- Schema / database label (legacy, kept for safety) ----------- */
 
 .schema-db-label {
   padding: 8px 14px 4px;
@@ -514,6 +514,46 @@ body {
   letter-spacing: 0.1em;
   color: #555e6e;
   user-select: none;
+}
+
+/* ---------- Schema row (collapsible section header) ------ */
+
+.schema-schema-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #e8eaf0;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  transition: background 0.1s;
+  user-select: none;
+  min-width: 0;
+}
+
+.schema-schema-row:hover {
+  background: #252b3b;
+}
+
+.schema-schema-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #a8b8d0;
+  font-weight: 600;
+}
+
+.schema-table-count {
+  font-size: 10px;
+  color: #555e6e;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ---------- Table row ------------------------------------ */
@@ -536,6 +576,11 @@ body {
 
 .schema-table-row:hover {
   background: #252b3b;
+}
+
+/* Indent table rows one level under their schema header */
+.schema-table-row--indented {
+  padding-left: 24px;
 }
 
 .schema-chevron {
@@ -610,4 +655,9 @@ body {
   font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* Columns under an indented table row need extra left padding to stay aligned */
+.schema-columns--indented .schema-column {
+  padding-left: 38px;
 }
