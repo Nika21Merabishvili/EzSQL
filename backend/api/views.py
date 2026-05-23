@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .sandbox import execute_query
+from .sandbox import execute_query, get_schema
 from .serializers import QueryRequestSerializer
 
 
@@ -26,4 +26,35 @@ class ExecuteQueryView(APIView):
         if 'error' in result:
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class SchemaView(APIView):
+    """
+    GET /api/schema/
+
+    Returns the structure of the sandbox database as JSON.
+
+    Shape:
+        {
+          "schemas": [
+            {
+              "name": "main",
+              "tables": [
+                {
+                  "name": "employees",
+                  "type": "table",
+                  "columns": [
+                    {"name": "id",   "type": "INTEGER", "pk": true,  "nullable": false},
+                    {"name": "name", "type": "TEXT",    "pk": false, "nullable": true}
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+    """
+
+    def get(self, request):
+        result = get_schema()
         return Response(result, status=status.HTTP_200_OK)

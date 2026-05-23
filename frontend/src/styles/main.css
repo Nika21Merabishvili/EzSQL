@@ -65,9 +65,18 @@ body {
   color: #8892a4;
 }
 
-/* ---------- Main two-pane layout ------------------------- */
+/* ---------- Main layout: sidebar + workbench ------------- */
 
 .app-main {
+  display: flex;
+  flex-direction: row;   /* sidebar on left, workbench on right */
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Workbench: the right-hand area that stacks editor + results */
+.workbench {
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -380,4 +389,225 @@ body {
   .results-table th {
     padding: 6px 10px;
   }
+
+  /* Hide sidebar on small screens to save space */
+  .schema-sidebar {
+    display: none;
+  }
+}
+
+/* =========================================================
+   Schema Browser Sidebar
+   ========================================================= */
+
+/* ---------- Sidebar shell -------------------------------- */
+
+.schema-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1e2433;
+  border-right: 1px solid #2d3448;
+  overflow: hidden;
+}
+
+/* ---------- Header --------------------------------------- */
+
+.schema-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2d3448;
+  flex-shrink: 0;
+}
+
+.schema-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8892a4;
+  user-select: none;
+}
+
+.schema-refresh-btn {
+  background: none;
+  border: none;
+  color: #8892a4;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.schema-refresh-btn:hover:not(:disabled) {
+  color: #00d4aa;
+  background: #252b3b;
+}
+
+.schema-refresh-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- Scrollable tree area ------------------------- */
+
+.schema-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+/* ---------- Loading skeleton ----------------------------- */
+
+.schema-skeleton {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-row {
+  height: 13px;
+  background: linear-gradient(
+    90deg,
+    #252b3b 25%,
+    #2d3448 50%,
+    #252b3b 75%
+  );
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: skeleton-shimmer 1.5s ease infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---------- Empty state ---------------------------------- */
+
+.schema-empty {
+  padding: 20px 16px;
+  font-size: 12px;
+  color: #555e6e;
+  line-height: 1.7;
+}
+
+.schema-empty code {
+  color: #00d4aa;
+  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  font-size: 11px;
+}
+
+/* ---------- Schema / database label ---------------------- */
+
+.schema-db-label {
+  padding: 8px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #555e6e;
+  user-select: none;
+}
+
+/* ---------- Table row ------------------------------------ */
+
+.schema-table-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #c8d0e0;
+  padding: 4px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.1s;
+  min-width: 0;
+}
+
+.schema-table-row:hover {
+  background: #252b3b;
+}
+
+.schema-chevron {
+  font-size: 9px;
+  color: #555e6e;
+  width: 12px;
+  flex-shrink: 0;
+}
+
+/* The table name is a sub-target inside the row button */
+.schema-table-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e8eaf0;
+  border-radius: 2px;
+}
+
+.schema-table-row:hover .schema-table-name {
+  color: #00d4aa;
+  text-decoration: underline;
+  text-decoration-color: #00d4aa55;
+}
+
+.schema-col-count {
+  font-size: 10px;
+  color: #555e6e;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---------- Column list ---------------------------------- */
+
+.schema-columns {
+  list-style: none;
+  padding: 2px 0 6px 0;
+  margin: 0;
+}
+
+.schema-column {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 14px 2px 28px;
+  font-size: 12px;
+}
+
+.schema-pk-icon {
+  font-size: 9px;
+  flex-shrink: 0;
+  width: 14px;
+}
+
+.schema-pk-placeholder {
+  display: inline-block;
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.schema-col-name {
+  color: #c8d0e0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schema-col-type {
+  font-size: 10px;
+  color: #555e6e;
+  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
