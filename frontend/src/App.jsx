@@ -4,11 +4,13 @@ import ResultsGrid from './components/ResultsGrid';
 import ErrorDisplay from './components/ErrorDisplay';
 import Toolbar from './components/Toolbar';
 import SchemaBrowser from './components/SchemaBrowser';
+import AuthWidget from './components/AuthWidget';
+import { AuthProvider } from './context/AuthContext';
 import { executeQuery } from './api/queryApi';
 
 const DEFAULT_SQL = 'SELECT * FROM employees LIMIT 10;';
 
-function App() {
+function AppShell() {
   const [sql, setSql] = useState(DEFAULT_SQL);
   // Bumping editorKey remounts CodeMirror with the new `sql` value — the
   // cleanest way to push external content into the uncontrolled editor.
@@ -68,6 +70,8 @@ function App() {
       <header className="app-header">
         <span className="app-logo">EzSQL</span>
         <span className="app-subtitle">Browser-Based SQL Interface</span>
+        {/* Auth widget sits at the far-right end of the header bar */}
+        <AuthWidget />
       </header>
 
       <main className="app-main">
@@ -104,4 +108,11 @@ function App() {
   );
 }
 
-export default App;
+// AuthProvider wraps the whole app so any component can call useAuth().
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}

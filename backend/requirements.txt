@@ -4,3 +4,5 @@ django-cors-headers>=4.3,<5.0
 dj-database-url>=2.1,<3.0
 psycopg2-binary>=2.9,<3.0
 gunicorn>=21.2,<22.0
+django-allauth[socialaccount]>=0.63.0,<1.0
+python-dotenv>=1.0,<2.0

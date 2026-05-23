@@ -1336,3 +1336,111 @@ body {
   opacity: 0.65;
   cursor: not-allowed;
 }
+
+/* =========================================================
+   Auth widget (top-right of header)
+   ========================================================= */
+
+/* Push the widget to the far right of the flex header. */
+.auth-widget,
+.auth-signin-btn,
+.auth-widget--skeleton {
+  margin-left: auto;
+}
+
+/* ── Skeleton placeholder while /api/me/ is loading ─────── */
+.auth-widget--skeleton {
+  width: 120px;
+  height: 28px;
+  border-radius: 4px;
+  background: #252b3b;
+  flex-shrink: 0;
+}
+
+/* ── Signed-in state ─────────────────────────────────────── */
+.auth-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Avatar circle */
+.auth-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #2d3448;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.auth-avatar-initials {
+  font-size: 11px;
+  font-weight: 700;
+  color: #00d4aa;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+/* Display name */
+.auth-name {
+  font-size: 13px;
+  color: #c8cdd8;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sign out button */
+.auth-signout-btn {
+  font-size: 12px;
+  color: #8892a4;
+  background: none;
+  border: 1px solid #2d3448;
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.auth-signout-btn:hover {
+  color: #e8eaf0;
+  border-color: #8892a4;
+}
+
+/* ── Anonymous state ─────────────────────────────────────── */
+.auth-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1d27;
+  background: #00d4aa;
+  border: none;
+  border-radius: 5px;
+  padding: 5px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, opacity 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.auth-signin-btn:hover {
+  background: #00c49a;
+}
+

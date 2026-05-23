@@ -24,6 +24,42 @@ The backend seeds the sandbox database automatically on first startup.
 
 ---
 
+## Google OAuth Setup
+
+EzSQL supports "Sign in with Google". Follow these steps once before running the app.
+
+### 1. Create OAuth credentials in Google Cloud Console
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services** → **Credentials**.
+2. Click **+ Create Credentials** → **OAuth 2.0 Client ID**.
+3. Application type: **Web application**.
+4. Under **Authorised JavaScript origins** add:
+   - `http://localhost:5173`
+   - `http://localhost:8000`
+5. Under **Authorised redirect URIs** add:
+   - `http://localhost:5173/accounts/google/login/callback/`
+   *(The Vite dev-server proxy forwards this to Django — keep it on port 5173 so session cookies stay on the same origin as the React app.)*
+6. Click **Create** and copy the **Client ID** and **Client secret**.
+
+### 2. Create your `.env` file
+
+```bash
+cp .env.example .env
+```
+
+Then fill in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` with the values from step 1.
+
+### 3. Run migrations
+
+```bash
+cd backend
+python manage.py migrate
+```
+
+This creates the tables for Django sessions, users, sites, and allauth's social accounts.
+
+---
+
 ## Manual Setup
 
 ### Backend
@@ -32,7 +68,10 @@ The backend seeds the sandbox database automatically on first startup.
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python manage.py seed_sandbox
+# Copy and fill in your Google OAuth credentials (see "Google OAuth Setup" above)
+cp ../.env.example ../.env
+python manage.py migrate        # creates session / user / allauth tables
+python manage.py seed_sandbox   # loads sample data into the sandbox DB
 python manage.py runserver
 ```
 

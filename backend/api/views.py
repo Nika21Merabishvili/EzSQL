@@ -1,3 +1,5 @@
+from django.middleware.csrf import get_token
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -58,3 +60,52 @@ class SchemaView(APIView):
     def get(self, request):
         result = get_schema()
         return Response(result, status=status.HTTP_200_OK)
+
+
+class MeView(APIView):
+    """
+    GET /api/me/
+
+    Returns the current user's authentication state.
+
+    Signed in:
+        {
+          "authenticated": true,
+          "email": "nika@example.com",
+          "name": "Nika Merabishvili",
+          "avatar_url": "https://...googleusercontent.com/..."
+        }
+
+    Anonymous:
+        { "authenticated": false }
+
+    Side-effect: ensures the CSRF cookie is set on every response so that the
+    React frontend can read it and attach it to subsequent POST requests
+    (required by DRF's SessionAuthentication).
+    """
+
+    def get(self, request):
+        # Force the CSRF cookie to be included in the response.
+        # DRF views are @csrf_exempt by default, so CsrfViewMiddleware won't
+        # set the cookie automatically — we call get_token() ourselves.
+        get_token(request)
+
+        if request.user.is_authenticated:
+            avatar_url = None
+            try:
+                social = request.user.socialaccount_set.filter(
+                    provider='google'
+                ).first()
+                if social:
+                    avatar_url = social.extra_data.get('picture')
+            except Exception:
+                pass
+
+            return Response({
+                'authenticated': True,
+                'email': request.user.email,
+                'name': request.user.get_full_name() or request.user.email,
+                'avatar_url': avatar_url,
+            })
+
+        return Response({'authenticated': False})
