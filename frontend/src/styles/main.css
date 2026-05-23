@@ -969,47 +969,370 @@ body {
 }
 
 /* =========================================================
-   Pinned (active) folder
+   Current folder highlight + controls
    ========================================================= */
 
-/* Accent on the header wrap when the folder is pinned */
-.schema-folder-header-wrap--pinned {
+/* Teal accent when a custom folder is the current destination */
+.schema-folder-header-wrap--current {
   border-left: 2px solid #00d4aa;
 }
 
 /* Compensate for the 2px border so text doesn't shift */
-.schema-folder-header-wrap--pinned .schema-schema-row {
+.schema-folder-header-wrap--current .schema-schema-row {
   padding-left: 12px;
   background: rgba(0, 212, 170, 0.04);
 }
 
-/* When pinned, keep all controls visible (not just on hover) */
-.schema-folder-header-wrap--pinned .schema-folder-controls {
+/* Keep all controls visible (not just on hover) when folder is current */
+.schema-folder-header-wrap--current .schema-folder-controls {
   display: flex;
 }
 
-/* ---------- Pin button ----------------------------------- */
-
-/* The pin button is inside .schema-folder-controls, so it inherits
-   the show/hide from that container. Additional rules here handle
-   the active (pinned) colour state. */
-
-.schema-folder-ctrl-btn--pin {
-  font-size: 12px;
-  filter: grayscale(1) opacity(0.45); /* muted when not pinned */
-  transition: filter 0.15s, background 0.15s;
+/* Subtle highlight for "main" when it is the current destination */
+.schema-folder-header-wrap--main-current {
+  border-left: 2px solid #2d3448;
 }
 
-.schema-folder-ctrl-btn--pin:hover {
-  filter: grayscale(0) opacity(1);
+.schema-folder-header-wrap--main-current .schema-schema-row {
+  padding-left: 12px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.schema-folder-header-wrap--main-current .schema-folder-controls {
+  display: flex;
+}
+
+/* ---------- "+ table" button ----------------------------- */
+
+.schema-folder-ctrl-btn--add-table {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: #555e6e;
+}
+
+.schema-folder-ctrl-btn--add-table:hover {
+  color: #00d4aa;
   background: #252b3b;
 }
 
-/* Pinned state: full colour, always visible */
-.schema-folder-ctrl-btn.schema-folder-ctrl-btn--pin-active {
-  filter: grayscale(0) opacity(1);
+/* =========================================================
+   Create Table Modal
+   ========================================================= */
+
+/* Full-viewport dark overlay */
+.ct-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
-.schema-folder-ctrl-btn.schema-folder-ctrl-btn--pin-active:hover {
-  background: rgba(0, 212, 170, 0.12);
+/* Dialog box */
+.ct-dialog {
+  background: #1e2433;
+  border: 1px solid #2d3448;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+
+.ct-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #2d3448;
+  flex-shrink: 0;
+}
+
+.ct-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf0;
+  margin: 0;
+}
+
+.ct-folder-name {
+  color: #00d4aa;
+}
+
+.ct-close-btn {
+  background: none;
+  border: none;
+  color: #555e6e;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ct-close-btn:hover {
+  color: #e8eaf0;
+  background: #252b3b;
+}
+
+/* ── Error banner (backend error shown at top) ───────────── */
+
+.ct-error-banner {
+  margin: 12px 20px 0;
+  padding: 8px 12px;
+  background: #2d1a1a;
+  border: 1px solid #7d2222;
+  border-left: 3px solid #e05252;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #e05252;
+  line-height: 1.5;
+}
+
+/* ── Body (scrollable) ───────────────────────────────────── */
+
+.ct-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+
+.ct-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid #2d3448;
+  flex-shrink: 0;
+}
+
+/* ── Form fields ─────────────────────────────────────────── */
+
+.ct-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ct-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8892a4;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  user-select: none;
+}
+
+.ct-input {
+  background: #252b3b;
+  border: 1px solid #2d3448;
+  border-radius: 4px;
+  color: #e8eaf0;
+  padding: 6px 9px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ct-input:focus {
+  border-color: #00d4aa;
+}
+
+.ct-input--error {
+  border-color: #e05252 !important;
+}
+
+.ct-select {
+  background: #252b3b;
+  border: 1px solid #2d3448;
+  border-radius: 4px;
+  color: #e8eaf0;
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.ct-select:focus {
+  border-color: #00d4aa;
+}
+
+.ct-field-error {
+  font-size: 11px;
+  color: #e05252;
+  line-height: 1.4;
+}
+
+.ct-col-error {
+  padding-left: 2px;
+}
+
+/* ── Column list ─────────────────────────────────────────── */
+
+.ct-columns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ct-column-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ct-column-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ct-col-name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ct-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #8892a4;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.ct-checkbox-label input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: #00d4aa;
+}
+
+.ct-col-remove-btn {
+  background: none;
+  border: none;
+  color: #555e6e;
+  font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ct-col-remove-btn:hover:not(:disabled) {
+  color: #e05252;
+  background: #2d1a1a;
+}
+
+.ct-col-remove-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.ct-add-col-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed #2d3448;
+  border-radius: 4px;
+  color: #8892a4;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ct-add-col-btn:hover {
+  color: #00d4aa;
+  border-color: #00d4aa55;
+}
+
+/* ── Show SQL toggle + preview ───────────────────────────── */
+
+.ct-show-sql-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #8892a4;
+  user-select: none;
+}
+
+.ct-show-sql-label input[type="checkbox"] {
+  accent-color: #00d4aa;
+  cursor: pointer;
+}
+
+.ct-sql-preview {
+  background: #1a1d27;
+  border: 1px solid #2d3448;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  font-size: 12px;
+  color: #a8b8d0;
+  white-space: pre;
+  overflow-x: auto;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* ── Action buttons ──────────────────────────────────────── */
+
+.ct-btn {
+  padding: 7px 18px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ct-btn--cancel {
+  background: none;
+  border: 1px solid #2d3448;
+  color: #8892a4;
+}
+
+.ct-btn--cancel:hover {
+  background: #252b3b;
+  color: #e8eaf0;
+}
+
+.ct-btn--create {
+  background: #00d4aa;
+  border: none;
+  color: #0d1117;
+}
+
+.ct-btn--create:hover:not(:disabled) {
+  background: #00c49a;
+}
+
+.ct-btn--create:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { getSchema } from '../api/schemaApi';
+import { executeQuery } from '../api/queryApi';
 import * as CF from '../lib/customFolders';
 
 /**
@@ -16,7 +17,37 @@ import * as CF from '../lib/customFolders';
  *
  * Custom folders live entirely in localStorage (key "ezsql:customFolders").
  * They are purely a UI organization layer; they do not affect query syntax.
+ *
+ * "Current folder" concept: whichever folder (or main) was most recently
+ * clicked is the current destination. New tables created while a custom
+ * folder is current are auto-assigned to it on the next schema refresh.
  */
+
+// ── SQL helpers ───────────────────────────────────────────────────────────────
+
+const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const COL_TYPES = ['INTEGER', 'TEXT', 'REAL', 'BLOB', 'NUMERIC'];
+
+/**
+ * Generate a CREATE TABLE statement from table name + column descriptors.
+ * Single PK → inline PRIMARY KEY. Multiple PKs → trailing constraint.
+ */
+function generateCreateTableSQL(tableName, columns) {
+  const pkCols = columns.filter((c) => c.pk);
+  const colDefs = columns.map((col) => {
+    let def = `  ${col.name} ${col.type}`;
+    if (pkCols.length === 1 && col.pk) def += ' PRIMARY KEY';
+    if (col.notNull) def += ' NOT NULL';
+    return def;
+  });
+  if (pkCols.length > 1) {
+    colDefs.push(`  PRIMARY KEY (${pkCols.map((c) => c.name).join(', ')})`);
+  }
+  return `CREATE TABLE ${tableName} (\n${colDefs.join(',\n')}\n);`;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) {
   // ── API state ─────────────────────────────────────────────────────────────
   const [schemas, setSchemas] = useState([]);
@@ -31,7 +62,7 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
   // ── Custom folder state (mirrors localStorage) ────────────────────────────
   const [folders, setFolders] = useState([]);
   const [assignments, setAssignments] = useState({}); // { tableName: folderId }
-  const [activeFolderId, setActiveFolderId] = useState(null); // pinned folder id
+  const [currentFolderId, setCurrentFolderId] = useState(null); // implicit "you are here"
 
   // ── Create-folder UI ──────────────────────────────────────────────────────
   const [newFolderMode, setNewFolderMode] = useState(false);
@@ -50,8 +81,20 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
   // ── Move-menu UI ──────────────────────────────────────────────────────────
   const [moveMenuTable, setMoveMenuTable] = useState(null);
 
+  // ── Create-table modal ────────────────────────────────────────────────────
+  // null = closed; { folderId: string|null, folderName: string } = open
+  const [createTableTarget, setCreateTableTarget] = useState(null);
+  const [ctTableName, setCtTableName] = useState('');
+  const [ctTableNameError, setCtTableNameError] = useState(null);
+  const [ctColumns, setCtColumns] = useState([]);
+  const [ctColErrors, setCtColErrors] = useState({});
+  const [ctShowSQL, setCtShowSQL] = useState(false);
+  const [ctSubmitError, setCtSubmitError] = useState(null);
+  const [ctSubmitting, setCtSubmitting] = useState(false);
+  const colIdRef = useRef(0);
+
   // ── First-load guard for auto-assignment ──────────────────────────────────
-  // null  → first fetch not yet complete; skip auto-assignment.
+  // null  → first fetch not yet complete; skip auto-assignment that run.
   // Set   → table names known after the previous fetch.
   const knownTablesRef = useRef(null);
 
@@ -60,7 +103,14 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
   const syncFolders = (data) => {
     setFolders([...data.folders]);
     setAssignments({ ...data.assignments });
-    setActiveFolderId(data.activeFolderId ?? null);
+    setCurrentFolderId(data.currentFolderId ?? null);
+  };
+
+  // ── Current-folder setter (state + localStorage in one call) ──────────────
+
+  const setCurrentFolder = (folderId) => {
+    CF.setCurrentFolder(folderId);
+    setCurrentFolderId(folderId);
   };
 
   // ── Data fetching ─────────────────────────────────────────────────────────
@@ -81,22 +131,22 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
       // Garbage-collect stale assignments (tables that no longer exist).
       const cleaned = CF.garbageCollect(allNames);
 
-      // ── Auto-assign new tables to the pinned folder ───────────────────
+      // ── Auto-assign new tables to the current folder ──────────────────
       // Only runs on subsequent fetches (prevTableNames !== null).
-      if (prevTableNames !== null && cleaned.activeFolderId) {
-        const activeFolderExists = cleaned.folders.some(
-          (f) => f.id === cleaned.activeFolderId
+      if (prevTableNames !== null && cleaned.currentFolderId) {
+        const currentFolderExists = cleaned.folders.some(
+          (f) => f.id === cleaned.currentFolderId
         );
-        if (activeFolderExists) {
+        if (currentFolderExists) {
           // Tables in the new response that weren't known before and have no assignment.
           for (const name of allNames) {
             if (!prevTableNames.has(name) && !cleaned.assignments[name]) {
-              CF.assignTable(name, cleaned.activeFolderId);
+              CF.assignTable(name, cleaned.currentFolderId);
             }
           }
         } else {
-          // Active folder was deleted outside normal flow — clear the pin.
-          CF.setActiveFolder(null);
+          // Current folder was deleted outside normal flow — reset to main.
+          CF.setCurrentFolder(null);
         }
         // Re-read after any writes above.
         Object.assign(cleaned, CF.load());
@@ -219,12 +269,132 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
     setMoveMenuTable(null);
   };
 
-  // ── Pin / unpin folder ────────────────────────────────────────────────────
+  // ── Create-table modal helpers ────────────────────────────────────────────
 
-  const handleTogglePin = (folderId) => {
-    const next = activeFolderId === folderId ? null : folderId;
-    CF.setActiveFolder(next);
-    setActiveFolderId(next);
+  const openCreateTableModal = (folderId, folderName) => {
+    // Set as current folder so auto-assignment fires on the next schema refresh.
+    setCurrentFolder(folderId);
+    // Reset modal state.
+    colIdRef.current = 0;
+    const defaultCol = {
+      id: `col_${++colIdRef.current}`,
+      name: 'id',
+      type: 'INTEGER',
+      pk: true,
+      notNull: true,
+    };
+    setCtTableName('');
+    setCtTableNameError(null);
+    setCtColumns([defaultCol]);
+    setCtColErrors({});
+    setCtShowSQL(false);
+    setCtSubmitError(null);
+    setCtSubmitting(false);
+    setMoveMenuTable(null); // close any open move menu
+    setCreateTableTarget({ folderId, folderName });
+  };
+
+  const closeCreateTableModal = () => {
+    setCreateTableTarget(null);
+  };
+
+  const handleAddColumn = () => {
+    setCtColumns((prev) => [
+      ...prev,
+      { id: `col_${++colIdRef.current}`, name: '', type: 'TEXT', pk: false, notNull: false },
+    ]);
+  };
+
+  const handleRemoveColumn = (colId) => {
+    setCtColumns((prev) => prev.filter((c) => c.id !== colId));
+    setCtColErrors((prev) => {
+      const next = { ...prev };
+      delete next[colId];
+      return next;
+    });
+  };
+
+  const handleColumnChange = (colId, field, value) => {
+    setCtColumns((prev) =>
+      prev.map((c) => (c.id === colId ? { ...c, [field]: value } : c))
+    );
+    if (field === 'name') {
+      // Clear the error for this column when the user starts typing.
+      setCtColErrors((prev) => {
+        const next = { ...prev };
+        delete next[colId];
+        return next;
+      });
+    }
+  };
+
+  const validateCreateTable = () => {
+    let valid = true;
+
+    // Table name validation
+    const tName = ctTableName.trim();
+    if (!tName) {
+      setCtTableNameError('Table name is required.');
+      valid = false;
+    } else if (!IDENT_RE.test(tName)) {
+      setCtTableNameError(
+        'Must start with a letter or _ and contain only letters, digits, _.'
+      );
+      valid = false;
+    } else {
+      const existing = new Set(
+        schemas.flatMap((s) => s.tables.map((t) => t.name.toLowerCase()))
+      );
+      if (existing.has(tName.toLowerCase())) {
+        setCtTableNameError('A table with that name already exists.');
+        valid = false;
+      } else {
+        setCtTableNameError(null);
+      }
+    }
+
+    // Column validation
+    const colErrors = {};
+    const seen = new Set();
+    for (const col of ctColumns) {
+      const cName = col.name.trim();
+      if (!cName) {
+        colErrors[col.id] = 'Name is required.';
+        valid = false;
+      } else if (!IDENT_RE.test(cName)) {
+        colErrors[col.id] =
+          'Must start with a letter or _ and contain only letters, digits, _.';
+        valid = false;
+      } else if (seen.has(cName.toLowerCase())) {
+        colErrors[col.id] = 'Duplicate column name.';
+        valid = false;
+      } else {
+        seen.add(cName.toLowerCase());
+      }
+    }
+    setCtColErrors(colErrors);
+
+    return valid;
+  };
+
+  const handleCreateTable = async () => {
+    if (!validateCreateTable()) return;
+    setCtSubmitting(true);
+    setCtSubmitError(null);
+
+    const sql = generateCreateTableSQL(ctTableName.trim(), ctColumns);
+    const result = await executeQuery(sql);
+
+    if (result.error) {
+      // Keep modal open, show error at top.
+      setCtSubmitError(result.error);
+      setCtSubmitting(false);
+    } else {
+      // Success — close modal; schema refetch + reconciliation places the new table.
+      setCreateTableTarget(null);
+      setCtSubmitting(false);
+      fetchSchema();
+    }
   };
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -243,14 +413,25 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
     const expandKey = `${groupKey}.${table.name}`;
     const tableOpen = !!expandedTables[expandKey];
     const isMenuOpen = moveMenuTable === table.name;
-    const currentFolder = assignments[table.name] ?? null;
+    const tableFolder = assignments[table.name] ?? null; // null = main
+
+    const handleTableRowClick = () => {
+      toggleTable(expandKey);
+      setCurrentFolder(tableFolder);
+    };
+
+    const handleTableNameClick = (e) => {
+      e.stopPropagation();
+      onInsertQuery(`SELECT * FROM ${table.name} LIMIT 100;`);
+      setCurrentFolder(tableFolder);
+    };
 
     return (
       <div key={table.name} className="schema-table-item">
         <div className="schema-table-row-wrap">
           <button
             className="schema-table-row schema-table-row--indented"
-            onClick={() => toggleTable(expandKey)}
+            onClick={handleTableRowClick}
             title={`${table.type === 'view' ? 'View' : 'Table'} — click to expand`}
           >
             <span className="schema-chevron" aria-hidden="true">
@@ -259,10 +440,7 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
             <span
               className="schema-table-name"
               title="Click to insert SELECT query"
-              onClick={(e) => {
-                e.stopPropagation();
-                onInsertQuery(`SELECT * FROM ${table.name} LIMIT 100;`);
-              }}
+              onClick={handleTableNameClick}
             >
               {table.name}
             </span>
@@ -299,7 +477,7 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
                   <button
                     key={f.id}
                     className={`schema-move-menu-item${
-                      currentFolder === f.id ? ' schema-move-menu-item--active' : ''
+                      tableFolder === f.id ? ' schema-move-menu-item--active' : ''
                     }`}
                     onClick={() => handleMoveTable(table.name, f.id)}
                   >
@@ -313,7 +491,7 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
 
                 <button
                   className={`schema-move-menu-item${
-                    currentFolder === null ? ' schema-move-menu-item--active' : ''
+                    tableFolder === null ? ' schema-move-menu-item--active' : ''
                   }`}
                   onClick={() => handleMoveTable(table.name, null)}
                 >
@@ -365,226 +543,448 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
   const isEmpty = !loading && totalRealTables === 0 && folders.length === 0;
 
   return (
-    <aside className="schema-sidebar">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="schema-header">
-        <span className="schema-title">Schema</span>
-        <div className="schema-header-actions">
-          {!newFolderMode && (
+    <>
+      <aside className="schema-sidebar">
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="schema-header">
+          <span className="schema-title">Schema</span>
+          <div className="schema-header-actions">
+            {!newFolderMode && (
+              <button
+                className="schema-new-folder-btn"
+                onClick={() => setNewFolderMode(true)}
+                title="Create a new folder"
+              >
+                + Folder
+              </button>
+            )}
             <button
-              className="schema-new-folder-btn"
-              onClick={() => setNewFolderMode(true)}
-              title="Create a new folder"
+              className="schema-refresh-btn"
+              onClick={fetchSchema}
+              disabled={loading}
+              title="Refresh schema"
+              aria-label="Refresh schema"
             >
-              + Folder
+              ⟳
             </button>
-          )}
-          <button
-            className="schema-refresh-btn"
-            onClick={fetchSchema}
-            disabled={loading}
-            title="Refresh schema"
-            aria-label="Refresh schema"
-          >
-            ⟳
-          </button>
-        </div>
-      </div>
-
-      {/* ── Inline new-folder input ──────────────────────────────────────── */}
-      {newFolderMode && (
-        <div className="schema-new-folder-row">
-          <input
-            autoFocus
-            className="schema-folder-input"
-            value={newFolderName}
-            placeholder="Folder name…"
-            onChange={(e) => {
-              setNewFolderName(e.target.value);
-              setNewFolderError(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreateFolder();
-              if (e.key === 'Escape') cancelNewFolder();
-            }}
-          />
-          {newFolderError && (
-            <div className="schema-input-error">{newFolderError}</div>
-          )}
-          {newFolderForTable && (
-            <div className="schema-input-hint">
-              Will assign <strong>{newFolderForTable}</strong> to new folder.
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Tree ────────────────────────────────────────────────────────── */}
-      <div className="schema-tree">
-        {loading ? (
-          <SkeletonRows />
-        ) : isEmpty ? (
-          <div className="schema-empty">
-            No tables yet — run a <code>CREATE TABLE</code> statement to get
-            started.
           </div>
-        ) : (
-          <>
-            {/* ── 1. Custom folders (above main, in creation order) ─────── */}
-            {folders.map((folder) => {
-              const folderOpen = !!expandedSchemas[folder.id];
-              const folderTables = tablesForFolder(folder.id);
-              const isRenaming = renamingFolderId === folder.id;
-              const isConfirmDelete = confirmDeleteId === folder.id;
-              const isPinned = activeFolderId === folder.id;
+        </div>
 
-              return (
-                <div key={folder.id} className="schema-group">
-                  {/* Folder header (or rename input) */}
-                  {isRenaming ? (
-                    <div className="schema-rename-row">
-                      <input
-                        autoFocus
-                        className="schema-folder-input"
-                        value={renameName}
-                        onChange={(e) => {
-                          setRenameName(e.target.value);
-                          setRenameError(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameFolder(folder.id);
-                          if (e.key === 'Escape') cancelRename();
-                        }}
-                      />
-                      {renameError && (
-                        <div className="schema-input-error">{renameError}</div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className={`schema-folder-header-wrap${isPinned ? ' schema-folder-header-wrap--pinned' : ''}`}>
+        {/* ── Inline new-folder input ──────────────────────────────────────── */}
+        {newFolderMode && (
+          <div className="schema-new-folder-row">
+            <input
+              autoFocus
+              className="schema-folder-input"
+              value={newFolderName}
+              placeholder="Folder name…"
+              onChange={(e) => {
+                setNewFolderName(e.target.value);
+                setNewFolderError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateFolder();
+                if (e.key === 'Escape') cancelNewFolder();
+              }}
+            />
+            {newFolderError && (
+              <div className="schema-input-error">{newFolderError}</div>
+            )}
+            {newFolderForTable && (
+              <div className="schema-input-hint">
+                Will assign <strong>{newFolderForTable}</strong> to new folder.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tree ────────────────────────────────────────────────────────── */}
+        <div className="schema-tree">
+          {loading ? (
+            <SkeletonRows />
+          ) : isEmpty ? (
+            <div className="schema-empty">
+              No tables yet — use the{' '}
+              <code>+ table</code> button on a folder header or run a{' '}
+              <code>CREATE TABLE</code> statement.
+            </div>
+          ) : (
+            <>
+              {/* ── 1. Custom folders (above main, in creation order) ─────── */}
+              {folders.map((folder) => {
+                const folderOpen = !!expandedSchemas[folder.id];
+                const folderTables = tablesForFolder(folder.id);
+                const isRenaming = renamingFolderId === folder.id;
+                const isConfirmDelete = confirmDeleteId === folder.id;
+                const isCurrent = currentFolderId === folder.id;
+
+                return (
+                  <div key={folder.id} className="schema-group">
+                    {/* Folder header (or rename input) */}
+                    {isRenaming ? (
+                      <div className="schema-rename-row">
+                        <input
+                          autoFocus
+                          className="schema-folder-input"
+                          value={renameName}
+                          onChange={(e) => {
+                            setRenameName(e.target.value);
+                            setRenameError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleRenameFolder(folder.id);
+                            if (e.key === 'Escape') cancelRename();
+                          }}
+                        />
+                        {renameError && (
+                          <div className="schema-input-error">{renameError}</div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className={`schema-folder-header-wrap${
+                          isCurrent ? ' schema-folder-header-wrap--current' : ''
+                        }`}
+                      >
+                        <button
+                          className="schema-schema-row schema-schema-row--custom"
+                          onClick={() => {
+                            toggleSchema(folder.id);
+                            setCurrentFolder(folder.id);
+                          }}
+                          aria-expanded={folderOpen}
+                          title={`Folder: ${folder.name}`}
+                        >
+                          <span className="schema-chevron" aria-hidden="true">
+                            {folderOpen ? '▾' : '▸'}
+                          </span>
+                          <span className="schema-schema-name">{folder.name}</span>
+                          <span className="schema-custom-badge">(custom)</span>
+                          <span className="schema-table-count">
+                            {folderTables.length}&nbsp;table{folderTables.length !== 1 ? 's' : ''}
+                          </span>
+                        </button>
+
+                        {/* + table, Rename, Delete — visible on hover (or always when current) */}
+                        <div className="schema-folder-controls">
+                          <button
+                            className="schema-folder-ctrl-btn schema-folder-ctrl-btn--add-table"
+                            title={`Create a new table in ${folder.name}`}
+                            aria-label={`Create table in ${folder.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCreateTableModal(folder.id, folder.name);
+                            }}
+                          >
+                            +
+                          </button>
+                          <button
+                            className="schema-folder-ctrl-btn"
+                            title="Rename folder"
+                            aria-label={`Rename ${folder.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenamingFolderId(folder.id);
+                              setRenameName(folder.name);
+                            }}
+                          >
+                            ✏
+                          </button>
+                          <button
+                            className="schema-folder-ctrl-btn schema-folder-ctrl-btn--del"
+                            title="Delete folder"
+                            aria-label={`Delete ${folder.name}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteId(folder.id);
+                            }}
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Inline delete confirmation */}
+                    {isConfirmDelete && (
+                      <div className="schema-delete-confirm">
+                        <p>
+                          Delete folder "{folder.name}"?<br />
+                          Tables will move back to main.
+                        </p>
+                        <div className="schema-delete-confirm-btns">
+                          <button
+                            className="schema-confirm-btn schema-confirm-btn--danger"
+                            onClick={() => handleDeleteFolder(folder.id)}
+                          >
+                            Delete
+                          </button>
+                          <button
+                            className="schema-confirm-btn"
+                            onClick={() => setConfirmDeleteId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tables assigned to this folder */}
+                    {folderOpen &&
+                      folderTables.map((table) => renderTableRow(table, folder.id))}
+                  </div>
+                );
+              })}
+
+              {/* ── 2. Real schemas — show only unassigned tables ─────────── */}
+              {schemas.map((schema) => {
+                const schemaOpen = !!expandedSchemas[schema.name];
+                // Filter out any table already claimed by a custom folder.
+                const visibleTables = schema.tables.filter(
+                  (t) => !assignments[t.name]
+                );
+                // Main is "current" when no custom folder is selected.
+                const isMainCurrent = currentFolderId === null;
+
+                return (
+                  <div key={schema.name} className="schema-group">
+                    <div
+                      className={`schema-folder-header-wrap${
+                        isMainCurrent
+                          ? ' schema-folder-header-wrap--main-current'
+                          : ''
+                      }`}
+                    >
                       <button
-                        className="schema-schema-row schema-schema-row--custom"
-                        onClick={() => toggleSchema(folder.id)}
-                        aria-expanded={folderOpen}
-                        title={`Folder: ${folder.name}`}
+                        className="schema-schema-row"
+                        onClick={() => {
+                          toggleSchema(schema.name);
+                          setCurrentFolder(null);
+                        }}
+                        aria-expanded={schemaOpen}
+                        title={`Schema: ${schema.name}`}
                       >
                         <span className="schema-chevron" aria-hidden="true">
-                          {folderOpen ? '▾' : '▸'}
+                          {schemaOpen ? '▾' : '▸'}
                         </span>
-                        <span className="schema-schema-name">{folder.name}</span>
-                        <span className="schema-custom-badge">(custom)</span>
+                        <span className="schema-schema-name">{schema.name}</span>
                         <span className="schema-table-count">
-                          {folderTables.length}&nbsp;table{folderTables.length !== 1 ? 's' : ''}
+                          {visibleTables.length}&nbsp;table{visibleTables.length !== 1 ? 's' : ''}
                         </span>
                       </button>
 
-                      {/* Pin, Rename, Delete — visible on hover (or always when pinned) */}
                       <div className="schema-folder-controls">
                         <button
-                          className={`schema-folder-ctrl-btn schema-folder-ctrl-btn--pin${isPinned ? ' schema-folder-ctrl-btn--pin-active' : ''}`}
-                          title={isPinned ? 'Stop sending new tables here' : 'Set as target for new tables'}
-                          aria-label={isPinned ? `Unpin ${folder.name}` : `Pin ${folder.name}`}
+                          className="schema-folder-ctrl-btn schema-folder-ctrl-btn--add-table"
+                          title={`Create a new table in ${schema.name}`}
+                          aria-label={`Create table in ${schema.name}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleTogglePin(folder.id);
+                            openCreateTableModal(null, schema.name);
                           }}
                         >
-                          📌
-                        </button>
-                        <button
-                          className="schema-folder-ctrl-btn"
-                          title="Rename folder"
-                          aria-label={`Rename ${folder.name}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRenamingFolderId(folder.id);
-                            setRenameName(folder.name);
-                          }}
-                        >
-                          ✏
-                        </button>
-                        <button
-                          className="schema-folder-ctrl-btn schema-folder-ctrl-btn--del"
-                          title="Delete folder"
-                          aria-label={`Delete ${folder.name}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmDeleteId(folder.id);
-                          }}
-                        >
-                          🗑
+                          +
                         </button>
                       </div>
                     </div>
-                  )}
 
-                  {/* Inline delete confirmation */}
-                  {isConfirmDelete && (
-                    <div className="schema-delete-confirm">
-                      <p>
-                        Delete folder "{folder.name}"?<br />
-                        Tables will move back to main.
-                      </p>
-                      <div className="schema-delete-confirm-btns">
-                        <button
-                          className="schema-confirm-btn schema-confirm-btn--danger"
-                          onClick={() => handleDeleteFolder(folder.id)}
+                    {schemaOpen &&
+                      visibleTables.map((table) =>
+                        renderTableRow(table, schema.name)
+                      )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </div>
+      </aside>
+
+      {/* ── Create Table Modal ──────────────────────────────────────────────── */}
+      {createTableTarget && (
+        <div
+          className="ct-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeCreateTableModal();
+          }}
+        >
+          <div className="ct-dialog" role="dialog" aria-modal="true">
+            {/* Dialog header */}
+            <div className="ct-header">
+              <h2 className="ct-title">
+                New table in{' '}
+                <span className="ct-folder-name">
+                  {createTableTarget.folderName}
+                </span>
+              </h2>
+              <button
+                className="ct-close-btn"
+                onClick={closeCreateTableModal}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Backend error banner */}
+            {ctSubmitError && (
+              <div className="ct-error-banner">
+                <strong>Error:</strong> {ctSubmitError}
+              </div>
+            )}
+
+            <div className="ct-body">
+              {/* ── Table name ─────────────────────────────────────────── */}
+              <div className="ct-field">
+                <label className="ct-label" htmlFor="ct-table-name">
+                  Table name
+                </label>
+                <input
+                  id="ct-table-name"
+                  className={`ct-input${ctTableNameError ? ' ct-input--error' : ''}`}
+                  value={ctTableName}
+                  placeholder="e.g. customers"
+                  autoFocus
+                  onChange={(e) => {
+                    setCtTableName(e.target.value);
+                    setCtTableNameError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') closeCreateTableModal();
+                  }}
+                />
+                {ctTableNameError && (
+                  <div className="ct-field-error">{ctTableNameError}</div>
+                )}
+              </div>
+
+              {/* ── Columns ────────────────────────────────────────────── */}
+              <div className="ct-field">
+                <label className="ct-label">Columns</label>
+                <div className="ct-columns-list">
+                  {ctColumns.map((col, idx) => (
+                    <div key={col.id} className="ct-column-row">
+                      <div className="ct-column-inputs">
+                        <input
+                          className={`ct-input ct-col-name-input${
+                            ctColErrors[col.id] ? ' ct-input--error' : ''
+                          }`}
+                          value={col.name}
+                          placeholder="column name"
+                          aria-label={`Column ${idx + 1} name`}
+                          onChange={(e) =>
+                            handleColumnChange(col.id, 'name', e.target.value)
+                          }
+                        />
+                        <select
+                          className="ct-select"
+                          value={col.type}
+                          aria-label={`Column ${idx + 1} type`}
+                          onChange={(e) =>
+                            handleColumnChange(col.id, 'type', e.target.value)
+                          }
                         >
-                          Delete
-                        </button>
-                        <button
-                          className="schema-confirm-btn"
-                          onClick={() => setConfirmDeleteId(null)}
+                          {COL_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                        <label
+                          className="ct-checkbox-label"
+                          title="Primary Key"
                         >
-                          Cancel
+                          <input
+                            type="checkbox"
+                            checked={col.pk}
+                            onChange={(e) =>
+                              handleColumnChange(col.id, 'pk', e.target.checked)
+                            }
+                          />
+                          <span>PK</span>
+                        </label>
+                        <label
+                          className="ct-checkbox-label"
+                          title="NOT NULL"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={col.notNull}
+                            onChange={(e) =>
+                              handleColumnChange(col.id, 'notNull', e.target.checked)
+                            }
+                          />
+                          <span>NN</span>
+                        </label>
+                        <button
+                          className="ct-col-remove-btn"
+                          title="Remove column"
+                          disabled={ctColumns.length === 1}
+                          onClick={() => handleRemoveColumn(col.id)}
+                          aria-label={`Remove column ${idx + 1}`}
+                        >
+                          ✕
                         </button>
                       </div>
+                      {ctColErrors[col.id] && (
+                        <div className="ct-field-error ct-col-error">
+                          {ctColErrors[col.id]}
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                  {/* Tables assigned to this folder */}
-                  {folderOpen &&
-                    folderTables.map((table) => renderTableRow(table, folder.id))}
+                  ))}
                 </div>
-              );
-            })}
+                <button className="ct-add-col-btn" onClick={handleAddColumn}>
+                  + Add column
+                </button>
+              </div>
 
-            {/* ── 2. Real schemas — show only unassigned tables ─────────── */}
-            {schemas.map((schema) => {
-              const schemaOpen = !!expandedSchemas[schema.name];
-              // Filter out any table already claimed by a custom folder.
-              const visibleTables = schema.tables.filter(
-                (t) => !assignments[t.name]
-              );
+              {/* ── Show SQL toggle ─────────────────────────────────────── */}
+              <div className="ct-field">
+                <label className="ct-show-sql-label">
+                  <input
+                    type="checkbox"
+                    checked={ctShowSQL}
+                    onChange={(e) => setCtShowSQL(e.target.checked)}
+                  />
+                  <span>Show SQL</span>
+                </label>
+                {ctShowSQL && (
+                  <pre className="ct-sql-preview">
+                    {ctTableName.trim()
+                      ? generateCreateTableSQL(
+                          ctTableName.trim(),
+                          ctColumns.map((c) => ({
+                            ...c,
+                            name: c.name.trim() || '_',
+                          }))
+                        )
+                      : '-- Enter a table name above'}
+                  </pre>
+                )}
+              </div>
+            </div>
 
-              return (
-                <div key={schema.name} className="schema-group">
-                  <button
-                    className="schema-schema-row"
-                    onClick={() => toggleSchema(schema.name)}
-                    aria-expanded={schemaOpen}
-                    title={`Schema: ${schema.name}`}
-                  >
-                    <span className="schema-chevron" aria-hidden="true">
-                      {schemaOpen ? '▾' : '▸'}
-                    </span>
-                    <span className="schema-schema-name">{schema.name}</span>
-                    <span className="schema-table-count">
-                      {visibleTables.length}&nbsp;table{visibleTables.length !== 1 ? 's' : ''}
-                    </span>
-                  </button>
-
-                  {schemaOpen &&
-                    visibleTables.map((table) =>
-                      renderTableRow(table, schema.name)
-                    )}
-                </div>
-              );
-            })}
-          </>
-        )}
-      </div>
-    </aside>
+            {/* Dialog footer */}
+            <div className="ct-footer">
+              <button
+                className="ct-btn ct-btn--cancel"
+                onClick={closeCreateTableModal}
+              >
+                Cancel
+              </button>
+              <button
+                className="ct-btn ct-btn--create"
+                onClick={handleCreateTable}
+                disabled={ctSubmitting}
+              >
+                {ctSubmitting ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 });
 

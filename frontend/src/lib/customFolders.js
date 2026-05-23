@@ -4,18 +4,22 @@
  * Storage key:  "ezsql:customFolders"
  * Shape:
  *   {
- *     folders:        [{ id: "f_<ts>", name: string }, ...],  // insertion order
- *     assignments:    { [tableName]: folderId },               // only assigned tables
- *     activeFolderId: string | null                            // pinned folder id, or null
+ *     folders:         [{ id: "f_<ts>", name: string }, ...],  // insertion order
+ *     assignments:     { [tableName]: folderId },               // only assigned tables
+ *     currentFolderId: string | null                            // last-clicked folder, or null = main
  *   }
  *
  * Tables absent from `assignments` render under the real "main" schema.
  * Custom folders are never auto-deleted; they persist until the user removes them.
- * While a folder is pinned (activeFolderId), new tables go there automatically.
+ * When currentFolderId is set, new tables detected on schema refresh go there
+ * automatically.
+ *
+ * Migration: if the old `activeFolderId` key is present (from a previous session)
+ * it is copied to `currentFolderId` and removed so existing users don't lose state.
  */
 
 const KEY = 'ezsql:customFolders';
-const EMPTY = () => ({ folders: [], assignments: {}, activeFolderId: null });
+const EMPTY = () => ({ folders: [], assignments: {}, currentFolderId: null });
 
 // ── Read / write ─────────────────────────────────────────────────────────────
 
@@ -28,7 +32,13 @@ export function load() {
     if (!Array.isArray(parsed.folders)) parsed.folders = [];
     if (typeof parsed.assignments !== 'object' || parsed.assignments === null)
       parsed.assignments = {};
-    if (!('activeFolderId' in parsed)) parsed.activeFolderId = null;
+    // One-time migration: activeFolderId → currentFolderId
+    if ('activeFolderId' in parsed && !('currentFolderId' in parsed)) {
+      parsed.currentFolderId = parsed.activeFolderId;
+      delete parsed.activeFolderId;
+      localStorage.setItem(KEY, JSON.stringify(parsed));
+    }
+    if (!('currentFolderId' in parsed)) parsed.currentFolderId = null;
     return parsed;
   } catch {
     return EMPTY();
@@ -62,7 +72,7 @@ export function renameFolder(id, name) {
 
 /**
  * Delete a folder, remove all its table assignments (tables fall back to
- * "main"), and clear the pin if this folder was the active one.
+ * "main"), and clear the current folder if this folder was the active one.
  */
 export function deleteFolder(id) {
   const data = load();
@@ -70,7 +80,7 @@ export function deleteFolder(id) {
   for (const [table, fid] of Object.entries(data.assignments)) {
     if (fid === id) delete data.assignments[table];
   }
-  if (data.activeFolderId === id) data.activeFolderId = null;
+  if (data.currentFolderId === id) data.currentFolderId = null;
   save(data);
 }
 
@@ -90,18 +100,18 @@ export function unassignTable(tableName) {
   save(data);
 }
 
-// ── Active (pinned) folder ────────────────────────────────────────────────────
+// ── Current folder ────────────────────────────────────────────────────────────
 
-/** Pin a folder as the auto-assignment target. Pass null to unpin. */
-export function setActiveFolder(id) {
+/** Set the current folder (new tables auto-assign here). Pass null for main. */
+export function setCurrentFolder(id) {
   const data = load();
-  data.activeFolderId = id ?? null;
+  data.currentFolderId = id ?? null;
   save(data);
 }
 
-/** Return the currently pinned folder id, or null if none. */
-export function getActiveFolder() {
-  return load().activeFolderId ?? null;
+/** Return the currently active folder id, or null if main is current. */
+export function getCurrentFolder() {
+  return load().currentFolderId ?? null;
 }
 
 // ── Garbage collection ────────────────────────────────────────────────────────
