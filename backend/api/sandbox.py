@@ -1,34 +1,88 @@
 """
-sandbox.py — SQL execution against the isolated sandbox SQLite database.
+sandbox.py — Per-user sandbox SQLite databases.
 
-Supported statements:
-  - SELECT, WITH … SELECT (read queries) — return columns + rows.
-  - DDL: CREATE TABLE/VIEW/INDEX, DROP TABLE/VIEW/INDEX, ALTER TABLE.
-  - DML: INSERT, UPDATE, DELETE, REPLACE — return affected row count.
-  All errors are caught and returned as structured dicts — no 500 crashes.
+Sandbox routing
+───────────────
+  get_sandbox_path(user) → Path
+      anonymous  → sandboxes/anonymous.sqlite
+      signed in  → sandboxes/user_<id>.sqlite
 
-get_schema() is a separate helper used by the /api/schema/ endpoint; it
-opens its own read-only connection so it never races with execute_query().
+  ensure_sandbox(path)
+      Creates and seeds the file if it doesn't exist yet.
+      Enables WAL mode so concurrent reads/writes don't block each other.
+      Idempotent — safe to call on every request.
+
+  reset_sandbox(path)
+      Deletes the file and re-seeds it.
+
+SQL execution
+─────────────
+  execute_query(sql, path) → dict
+  get_schema(path) → dict
+
+  Both functions accept an explicit Path so the caller (the view) controls
+  routing.  The view must call get_sandbox_path + ensure_sandbox first.
 """
 
-import os
 import sqlite3
 import time
+from pathlib import Path
 
 from django.conf import settings
 
 
-def _get_db_path() -> str:
-    return getattr(settings, 'SANDBOX_DB_PATH', 'sandbox.db')
+# ── Paths ──────────────────────────────────────────────────────────────────────
+
+SANDBOX_DIR = Path(settings.BASE_DIR) / 'sandboxes'
+SEED_PATH   = SANDBOX_DIR / 'seed.sql'
 
 
-# ---------------------------------------------------------------------------
-# execute_query
-# ---------------------------------------------------------------------------
+# ── Routing ────────────────────────────────────────────────────────────────────
 
-def execute_query(sql: str) -> dict:
+def get_sandbox_path(user) -> Path:
+    """Return the sandbox file path for *user*.
+
+    anonymous → sandboxes/anonymous.sqlite
+    signed in → sandboxes/user_<id>.sqlite
     """
-    Execute *sql* against the sandbox database and return a result dict.
+    SANDBOX_DIR.mkdir(exist_ok=True)
+    if user and user.is_authenticated:
+        return SANDBOX_DIR / f'user_{user.id}.sqlite'
+    return SANDBOX_DIR / 'anonymous.sqlite'
+
+
+def ensure_sandbox(path: Path) -> None:
+    """Create and seed *path* if it doesn't exist.  Idempotent.
+
+    Also enables WAL mode so concurrent reads (schema endpoint) and writes
+    (execute endpoint) don't block each other.  WAL is a persistent property
+    of the SQLite file, so it only needs to be set once.
+    """
+    if path.exists():
+        return
+    seed_sql = SEED_PATH.read_text(encoding='utf-8')
+    conn = sqlite3.connect(str(path))
+    try:
+        conn.executescript(seed_sql)
+        conn.execute('PRAGMA journal_mode=WAL;')
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def reset_sandbox(path: Path) -> None:
+    """Delete and re-seed *path*.  Creates the file fresh with sample data."""
+    if path.exists():
+        path.unlink()
+    ensure_sandbox(path)
+
+
+# ── Query execution ────────────────────────────────────────────────────────────
+
+def execute_query(sql: str, path: Path) -> dict:
+    """Execute *sql* against the sandbox at *path*.
+
+    Caller must have already called ensure_sandbox(path).
 
     SELECT shape:
         {"columns": [...], "rows": [[...], ...], "row_count": N, "execution_time_ms": N}
@@ -41,23 +95,11 @@ def execute_query(sql: str) -> dict:
         {"error": "Human-readable message"}
     """
     sql = sql.strip()
-
     if not sql:
         return {'error': 'Query cannot be empty.'}
 
-    db_path = _get_db_path()
-
-    if not os.path.exists(db_path):
-        return {
-            'error': (
-                'Sandbox database has not been initialised. '
-                'Run: python manage.py seed_sandbox'
-            )
-        }
-
     try:
-        conn = sqlite3.connect(db_path, timeout=10)
-
+        conn = sqlite3.connect(str(path), timeout=10)
         try:
             cursor = conn.cursor()
             start = time.perf_counter()
@@ -97,13 +139,13 @@ def execute_query(sql: str) -> dict:
         return {'error': f'Unexpected error: {exc}'}
 
 
-# ---------------------------------------------------------------------------
-# get_schema
-# ---------------------------------------------------------------------------
+# ── Schema inspection ──────────────────────────────────────────────────────────
 
-def get_schema() -> dict:
-    """
-    Return the structure of the sandbox database as a JSON-serialisable dict.
+def get_schema(path: Path) -> dict:
+    """Return the structure of the sandbox at *path*.
+
+    Uses a dedicated read-only connection so schema reads never block or
+    conflict with the read-write execute_query() connection.
 
     Shape:
         {
@@ -123,19 +165,10 @@ def get_schema() -> dict:
             }
           ]
         }
-
-    Uses a dedicated read-only connection so schema reads never block or
-    conflict with the read-write execute_query() connection.
     """
-    db_path = _get_db_path()
-
-    if not os.path.exists(db_path):
-        return {'schemas': []}
-
     try:
-        uri = f'file:{db_path}?mode=ro'
+        uri = f'file:{path}?mode=ro'
         conn = sqlite3.connect(uri, uri=True, timeout=10)
-
         try:
             cursor = conn.cursor()
 
@@ -148,8 +181,8 @@ def get_schema() -> dict:
                 # Tables and views (skip internal sqlite_ objects).
                 cursor.execute(
                     f'SELECT name, type FROM "{db_name}".sqlite_master '
-                    f'WHERE type IN (\'table\',\'view\') '
-                    f'AND name NOT LIKE \'sqlite_%\' '
+                    f"WHERE type IN ('table','view') "
+                    f"AND name NOT LIKE 'sqlite_%' "
                     f'ORDER BY name;'
                 )
                 tables_raw = cursor.fetchall()

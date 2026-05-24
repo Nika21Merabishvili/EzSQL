@@ -1,7 +1,9 @@
 import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import { getSchema } from '../api/schemaApi';
 import { executeQuery } from '../api/queryApi';
+import { resetSandbox } from '../api/sandboxApi';
 import * as CF from '../lib/customFolders';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * SchemaBrowser — left sidebar showing the sandbox database schema.
@@ -49,6 +51,9 @@ function generateCreateTableSQL(tableName, columns) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) {
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  const auth = useAuth();
+
   // ── API state ─────────────────────────────────────────────────────────────
   const [schemas, setSchemas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,10 +64,21 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
   // Keys are "<groupKey>.<tableName>"
   const [expandedTables, setExpandedTables] = useState({});
 
-  // ── Custom folder state (mirrors localStorage) ────────────────────────────
+  // ── Custom folder state ───────────────────────────────────────────────────
+  // Mirrors the in-memory cache in customFolders.js.
+  // For anonymous users the cache is backed by localStorage; for signed-in
+  // users it's backed by the backend (GET/PUT /api/folders/).
   const [folders, setFolders] = useState([]);
   const [assignments, setAssignments] = useState({}); // { tableName: folderId }
   const [currentFolderId, setCurrentFolderId] = useState(null); // implicit "you are here"
+
+  // ── Save-error toast ──────────────────────────────────────────────────────
+  // Set by the CF error handler when a background PUT fails twice.
+  const [saveError, setSaveError] = useState(null);
+
+  // ── Reset sandbox dialog ───────────────────────────────────────────────────
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetPending, setResetPending] = useState(false);
 
   // ── Create-folder UI ──────────────────────────────────────────────────────
   const [newFolderMode, setNewFolderMode] = useState(false);
@@ -173,12 +189,29 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
 
   useImperativeHandle(ref, () => ({ refresh: fetchSchema }), []);
 
+  // ── Auth-aware initialisation ─────────────────────────────────────────────
+  // Runs on mount (once auth finishes loading) and whenever the user signs
+  // in or out.  CF.init():
+  //   • anonymous → reads localStorage
+  //   • signed in → fetches backend; migrates localStorage if backend empty
+  // After init the schema is fetched so the sidebar reflects the new state.
   useEffect(() => {
-    // Pre-populate folder state from localStorage so the sidebar
-    // renders immediately (before the API responds).
-    syncFolders(CF.load());
-    fetchSchema();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (auth.loading) return; // wait for /api/me/ to resolve
+
+    // Register the save-error handler so background PUT failures surface.
+    CF.setErrorHandler((msg) => setSaveError(msg));
+
+    const startup = async () => {
+      // Reset the known-tables guard so auto-assignment doesn't fire on the
+      // first schema fetch after every auth change.
+      knownTablesRef.current = null;
+      await CF.init(auth.authenticated);
+      // fetchSchema reads from the CF cache (via garbageCollect + load) and
+      // calls syncFolders at the end — no need to call it separately.
+      fetchSchema();
+    };
+    startup();
+  }, [auth.loading, auth.authenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Toggle helpers ────────────────────────────────────────────────────────
 
@@ -397,6 +430,24 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
     }
   };
 
+  // ── Reset sandbox ─────────────────────────────────────────────────────────
+
+  const handleResetSandbox = async () => {
+    setResetPending(true);
+    try {
+      await resetSandbox();
+    } catch {
+      // Even on network error, close the dialog and refresh — the server
+      // may have succeeded; the sidebar refresh will reflect reality.
+    }
+    setShowResetConfirm(false);
+    setResetPending(false);
+    // Reset the known-tables guard so auto-assignment doesn't fire on the
+    // first schema fetch after the reset (same logic as auth change).
+    knownTablesRef.current = null;
+    fetchSchema();
+  };
+
   // ── Derived data ──────────────────────────────────────────────────────────
 
   // All real tables from all schemas, tagged with their schema name.
@@ -567,8 +618,31 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
             >
               ⟳
             </button>
+            <button
+              className="schema-reset-btn"
+              onClick={() => setShowResetConfirm(true)}
+              disabled={loading || resetPending}
+              title="Reset sandbox to sample data"
+              aria-label="Reset sandbox"
+            >
+              ↺
+            </button>
           </div>
         </div>
+
+        {/* ── Save-error toast ────────────────────────────────────────────── */}
+        {saveError && (
+          <div className="schema-save-error" role="alert">
+            <span>{saveError}</span>
+            <button
+              className="schema-save-error-dismiss"
+              onClick={() => setSaveError(null)}
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* ── Inline new-folder input ──────────────────────────────────────── */}
         {newFolderMode && (
@@ -979,6 +1053,55 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
                 disabled={ctSubmitting}
               >
                 {ctSubmitting ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reset Sandbox Confirmation Dialog ──────────────────────────────── */}
+      {showResetConfirm && (
+        <div
+          className="ct-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !resetPending)
+              setShowResetConfirm(false);
+          }}
+        >
+          <div className="ct-dialog schema-reset-dialog" role="alertdialog" aria-modal="true">
+            <div className="ct-header">
+              <h2 className="ct-title">Reset sandbox?</h2>
+              <button
+                className="ct-close-btn"
+                onClick={() => setShowResetConfirm(false)}
+                disabled={resetPending}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="ct-body">
+              <p className="schema-reset-warning">
+                This will <strong>delete every table</strong> in your sandbox and
+                restore the sample data (<code>departments</code>,{' '}
+                <code>employees</code>, <code>orders</code>).
+                This cannot be undone.
+              </p>
+            </div>
+            <div className="ct-footer">
+              <button
+                className="ct-btn ct-btn--cancel"
+                onClick={() => setShowResetConfirm(false)}
+                disabled={resetPending}
+              >
+                Cancel
+              </button>
+              <button
+                className="ct-btn schema-reset-confirm-btn"
+                onClick={handleResetSandbox}
+                disabled={resetPending}
+              >
+                {resetPending ? 'Resetting…' : 'Reset'}
               </button>
             </div>
           </div>

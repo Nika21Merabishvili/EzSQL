@@ -19,6 +19,9 @@ backend/db.sqlite3
 backend/sandbox.db
 backend/staticfiles/
 
+# Per-user sandbox files (seed.sql is tracked; .sqlite files are not)
+backend/sandboxes/*.sqlite
+
 # ---- Node / Vite ----------------------------------------
 node_modules/
 frontend/dist/
