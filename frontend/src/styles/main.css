@@ -1,14 +1,44 @@
 /* =========================================================
-   EzSQL — Global Styles
-   Palette:
-     Background dark  #1a1d27
-     Surface dark     #1e2433
-     Surface medium   #252b3b
-     Accent teal      #00d4aa
-     Text primary     #e8eaf0
-     Text muted       #8892a4
-     Border           #2d3448
+   EzSQL — Global Styles (Light Theme)
+
+   All colours live in :root as CSS variables.
+   No hardcoded hex values appear in the rules below.
    ========================================================= */
+
+/* ---------- Design tokens -------------------------------- */
+
+:root {
+  /* surfaces */
+  --bg-canvas:      #F7FAF8;   /* main app background, off-white with green hint */
+  --bg-elevated:    #FFFFFF;   /* sidebar, modals, header, results grid */
+  --bg-subtle:      #F1F5F3;   /* hover states, row striping */
+  --bg-accent-soft: #ECFDF5;   /* selected / active / current folder tint */
+
+  /* borders */
+  --border-subtle:  #E5E9E7;
+  --border-default: #CBD5D1;
+
+  /* text */
+  --text-primary:   #0F172A;
+  --text-secondary: #475569;
+  --text-tertiary:  #94A3B8;
+  --text-on-accent: #FFFFFF;
+
+  /* accent (emerald) */
+  --accent:         #10B981;
+  --accent-hover:   #059669;
+  --accent-strong:  #047857;
+  --accent-soft:    #D1FAE5;
+
+  /* feedback */
+  --danger:         #DC2626;
+  --danger-soft:    #FEE2E2;
+
+  /* shadows — subtle, not Material */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.10);
+}
 
 /* ---------- Reset & Base --------------------------------- */
 
@@ -24,11 +54,11 @@ html, body, #root {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-               Ubuntu, Cantarell, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+               Oxygen, Ubuntu, Cantarell, sans-serif;
   font-size: 14px;
-  background: #1a1d27;
-  color: #e8eaf0;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
 }
 
 /* ---------- App Shell ------------------------------------ */
@@ -46,8 +76,10 @@ body {
   align-items: center;
   gap: 16px;
   padding: 10px 20px;
-  background: #1e2433;
-  border-bottom: 1px solid #2d3448;
+  /* Subtle green-tinted gradient so the header reads as elevated without shadow clutter */
+  background: linear-gradient(to right, #FFFFFF, #F0FDF5);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
   flex-shrink: 0;
   user-select: none;
 }
@@ -55,14 +87,14 @@ body {
 .app-logo {
   font-size: 20px;
   font-weight: 800;
-  color: #00d4aa;
+  color: var(--accent-strong);
   letter-spacing: -0.5px;
   font-family: 'Courier New', Courier, monospace;
 }
 
 .app-subtitle {
   font-size: 12px;
-  color: #8892a4;
+  color: var(--text-tertiary);
 }
 
 /* ---------- Main layout: sidebar + workbench ------------- */
@@ -90,7 +122,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 50%;
-  border-bottom: 2px solid #2d3448;
+  border-bottom: 2px solid var(--border-subtle);
   min-height: 0;
 }
 
@@ -122,8 +154,8 @@ body {
   align-items: center;
   gap: 10px;
   padding: 8px 14px;
-  background: #252b3b;
-  border-bottom: 1px solid #2d3448;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -132,8 +164,8 @@ body {
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: #00d4aa;
-  color: #0d1117;
+  background: var(--accent);
+  color: var(--text-on-accent);
   border: none;
   border-radius: 5px;
   font-size: 13px;
@@ -141,10 +173,11 @@ body {
   cursor: pointer;
   transition: background 0.15s ease, opacity 0.15s ease;
   white-space: nowrap;
+  font-family: inherit;
 }
 
 .run-btn:hover:not(:disabled) {
-  background: #00c49a;
+  background: var(--accent-hover);
 }
 
 .run-btn:disabled,
@@ -158,8 +191,8 @@ body {
   display: inline-block;
   width: 12px;
   height: 12px;
-  border: 2px solid #0d1117;
-  border-top-color: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -173,20 +206,21 @@ body {
   gap: 6px;
 }
 
+/* Status pills: pale-green bg, dark-green text */
 .stat-badge {
   padding: 3px 10px;
-  background: #1e2433;
-  border: 1px solid #2d3448;
+  background: var(--accent-soft);
   border-radius: 20px;
   font-size: 11px;
-  color: #8892a4;
+  font-weight: 600;
+  color: var(--accent-strong);
   white-space: nowrap;
 }
 
 .toolbar-hint {
   margin-left: auto;
   font-size: 11px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
@@ -198,8 +232,8 @@ body {
   flex: 1;
   overflow: hidden;
   min-height: 0;
-  background: #ffffff;
-  color: #1a1a2e;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
 }
 
 /* ---------- Empty / idle state --------------------------- */
@@ -209,7 +243,7 @@ body {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #aaa;
+  color: var(--text-tertiary);
   font-size: 13px;
   font-style: italic;
 }
@@ -222,16 +256,16 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  background: #fff5f5;
-  border-left: 4px solid #e53e3e;
-  border-bottom: 1px solid #fed7d7;
+  background: var(--danger-soft);
+  border-left: 4px solid var(--danger);
+  border-bottom: 1px solid rgba(220, 38, 38, 0.2);
   flex-shrink: 0;
 }
 
 .error-message {
   font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
   font-size: 12px;
-  color: #c53030;
+  color: var(--danger);
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.5;
@@ -242,7 +276,7 @@ body {
   flex-shrink: 0;
   background: none;
   border: none;
-  color: #c53030;
+  color: var(--danger);
   font-size: 15px;
   cursor: pointer;
   line-height: 1;
@@ -252,7 +286,7 @@ body {
 }
 
 .error-dismiss:hover {
-  background: #fed7d7;
+  background: rgba(220, 38, 38, 0.12);
 }
 
 /* ---------- Results Grid --------------------------------- */
@@ -291,36 +325,38 @@ body {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #555;
-  background: #f0f2f5;
-  border-bottom: 2px solid #dde1e8;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-default);
   white-space: nowrap;
 }
 
 .results-table td {
   padding: 7px 14px;
-  border-bottom: 1px solid #f0f0f0;
-  color: #222;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
   white-space: nowrap;
   max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Zebra striping: even rows pure white, odd rows subtle tint */
 .row-even td {
-  background: #ffffff;
+  background: var(--bg-elevated);
 }
 
 .row-odd td {
-  background: #fafbfc;
+  background: var(--bg-subtle);
 }
 
+/* Hover: soft accent tint for both even and odd */
 .results-table tbody tr:hover td {
-  background: #eef4ff;
+  background: var(--bg-accent-soft);
 }
 
 .null-value {
-  color: #bbb;
+  color: var(--text-tertiary);
   font-style: italic;
   font-size: 11px;
 }
@@ -332,14 +368,14 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 7px 14px;
-  background: #f5f7fa;
-  border-top: 1px solid #e4e8ee;
+  background: var(--bg-subtle);
+  border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .row-count {
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .pagination {
@@ -350,17 +386,20 @@ body {
 
 .pagination-btn {
   padding: 4px 12px;
-  background: #1e2433;
-  color: #e8eaf0;
-  border: none;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  font-family: inherit;
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background: #2d3448;
+  background: var(--bg-subtle);
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .pagination-btn:disabled {
@@ -370,7 +409,7 @@ body {
 
 .pagination-info {
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -407,8 +446,9 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #1e2433;
-  border-right: 1px solid #2d3448;
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -419,7 +459,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  border-bottom: 1px solid #2d3448;
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -428,25 +468,25 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #8892a4;
+  color: var(--text-tertiary);
   user-select: none;
 }
 
 .schema-refresh-btn {
   background: none;
   border: none;
-  color: #8892a4;
+  color: var(--text-tertiary);
   font-size: 17px;
   line-height: 1;
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.12s, background 0.12s;
 }
 
 .schema-refresh-btn:hover:not(:disabled) {
-  color: #00d4aa;
-  background: #252b3b;
+  color: var(--accent);
+  background: var(--bg-accent-soft);
 }
 
 .schema-refresh-btn:disabled {
@@ -475,9 +515,9 @@ body {
   height: 13px;
   background: linear-gradient(
     90deg,
-    #252b3b 25%,
-    #2d3448 50%,
-    #252b3b 75%
+    var(--bg-subtle) 25%,
+    var(--border-subtle) 50%,
+    var(--bg-subtle) 75%
   );
   background-size: 200% 100%;
   border-radius: 4px;
@@ -494,12 +534,12 @@ body {
 .schema-empty {
   padding: 20px 16px;
   font-size: 12px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   line-height: 1.7;
 }
 
 .schema-empty code {
-  color: #00d4aa;
+  color: var(--accent-strong);
   font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
   font-size: 11px;
 }
@@ -512,7 +552,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #555e6e;
+  color: var(--text-tertiary);
   user-select: none;
 }
 
@@ -525,19 +565,19 @@ body {
   width: 100%;
   background: none;
   border: none;
-  color: #e8eaf0;
+  color: var(--text-primary);
   padding: 6px 14px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
   text-align: left;
-  transition: background 0.1s;
+  transition: background 0.12s;
   user-select: none;
   min-width: 0;
 }
 
 .schema-schema-row:hover {
-  background: #252b3b;
+  background: var(--bg-subtle);
 }
 
 .schema-schema-name {
@@ -545,13 +585,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #a8b8d0;
+  color: var(--text-secondary);
   font-weight: 600;
 }
 
 .schema-table-count {
   font-size: 10px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -565,17 +605,17 @@ body {
   width: 100%;
   background: none;
   border: none;
-  color: #c8d0e0;
+  color: var(--text-secondary);
   padding: 4px 14px;
   cursor: pointer;
   font-size: 13px;
   text-align: left;
-  transition: background 0.1s;
+  transition: background 0.12s;
   min-width: 0;
 }
 
 .schema-table-row:hover {
-  background: #252b3b;
+  background: var(--bg-subtle);
 }
 
 /* Indent table rows one level under their schema header */
@@ -585,7 +625,7 @@ body {
 
 .schema-chevron {
   font-size: 9px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   width: 12px;
   flex-shrink: 0;
 }
@@ -596,19 +636,19 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #e8eaf0;
+  color: var(--text-primary);
   border-radius: 2px;
 }
 
 .schema-table-row:hover .schema-table-name {
-  color: #00d4aa;
+  color: var(--accent-strong);
   text-decoration: underline;
-  text-decoration-color: #00d4aa55;
+  text-decoration-color: rgba(4, 120, 87, 0.35);
 }
 
 .schema-col-count {
   font-size: 10px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -642,7 +682,7 @@ body {
 }
 
 .schema-col-name {
-  color: #c8d0e0;
+  color: var(--text-secondary);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -651,7 +691,7 @@ body {
 
 .schema-col-type {
   font-size: 10px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
   white-space: nowrap;
   flex-shrink: 0;
@@ -677,20 +717,22 @@ body {
 /* "+ Folder" button */
 .schema-new-folder-btn {
   background: none;
-  border: 1px solid #2d3448;
-  color: #8892a4;
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
   line-height: 1.6;
+  font-family: inherit;
 }
 
 .schema-new-folder-btn:hover {
-  color: #00d4aa;
-  border-color: #00d4aa55;
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--bg-accent-soft);
 }
 
 /* ---------- Inline folder-name input rows ---------------- */
@@ -698,43 +740,45 @@ body {
 .schema-new-folder-row,
 .schema-rename-row {
   padding: 6px 10px 8px;
-  border-bottom: 1px solid #2d3448;
-  background: #1a1d27;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-canvas);
   flex-shrink: 0;
 }
 
 .schema-folder-input {
   width: 100%;
-  background: #252b3b;
-  border: 1px solid #2d3448;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  color: #e8eaf0;
+  color: var(--text-primary);
   padding: 5px 8px;
   font-size: 12px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
 }
 
 .schema-folder-input:focus {
-  border-color: #00d4aa;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
 .schema-input-error {
   margin-top: 4px;
   font-size: 11px;
-  color: #e05252;
+  color: var(--danger);
   line-height: 1.4;
 }
 
 .schema-input-hint {
   margin-top: 4px;
   font-size: 11px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   line-height: 1.4;
 }
 
 .schema-input-hint strong {
-  color: #a8b8d0;
+  color: var(--text-secondary);
 }
 
 /* ---------- Custom folder header wrap -------------------- */
@@ -751,15 +795,15 @@ body {
   width: auto; /* override the 100% default */
 }
 
-/* Distinguish custom folder name from real schema name */
+/* Custom folder name — emerald tint so it's distinct from real schemas */
 .schema-schema-row--custom .schema-schema-name {
-  color: #b0a8d0;
+  color: var(--accent-strong);
 }
 
 /* "(custom)" badge */
 .schema-custom-badge {
   font-size: 9px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   font-style: italic;
   white-space: nowrap;
   flex-shrink: 0;
@@ -787,19 +831,19 @@ body {
   border-radius: 3px;
   cursor: pointer;
   font-size: 11px;
-  color: #555e6e;
+  color: var(--text-tertiary);
   line-height: 1;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.12s, background 0.12s;
 }
 
 .schema-folder-ctrl-btn:hover {
-  color: #8892a4;
-  background: #252b3b;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
 }
 
 .schema-folder-ctrl-btn--del:hover {
-  color: #e05252;
-  background: #2d1a1a;
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 /* ---------- Delete confirmation (inline) ----------------- */
@@ -807,15 +851,15 @@ body {
 .schema-delete-confirm {
   margin: 2px 10px 6px;
   padding: 8px 10px;
-  background: #1a1d27;
-  border: 1px solid #3d2424;
-  border-left: 3px solid #e05252;
+  background: var(--danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-left: 3px solid var(--danger);
   border-radius: 4px;
 }
 
 .schema-delete-confirm p {
   font-size: 11px;
-  color: #c8d0e0;
+  color: var(--text-secondary);
   line-height: 1.5;
   margin-bottom: 8px;
 }
@@ -830,26 +874,27 @@ body {
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
-  border: 1px solid #2d3448;
-  background: #252b3b;
-  color: #8892a4;
-  transition: background 0.15s, color 0.15s;
+  border: 1px solid var(--border-default);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s;
+  font-family: inherit;
 }
 
 .schema-confirm-btn:hover {
-  background: #2d3448;
-  color: #e8eaf0;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .schema-confirm-btn--danger {
-  background: #2d1a1a;
-  border-color: #7d2222;
-  color: #e05252;
+  background: var(--danger-soft);
+  border-color: rgba(220, 38, 38, 0.35);
+  color: var(--danger);
 }
 
 .schema-confirm-btn--danger:hover {
-  background: #e05252;
-  border-color: #e05252;
+  background: var(--danger);
+  border-color: var(--danger);
   color: #fff;
 }
 
@@ -875,7 +920,7 @@ body {
   justify-content: center;
   background: none;
   border: none;
-  color: #555e6e;
+  color: var(--text-tertiary);
   padding: 0 7px;
   font-size: 13px;
   line-height: 1;
@@ -883,7 +928,7 @@ body {
   border-radius: 3px;
   flex-shrink: 0;
   align-self: stretch;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.12s, background 0.12s;
 }
 
 .schema-table-row-wrap:hover .schema-move-btn,
@@ -893,13 +938,13 @@ body {
 
 .schema-move-btn:hover,
 .schema-move-btn--active {
-  color: #00d4aa;
-  background: #252b3b;
+  color: var(--accent-strong);
+  background: var(--bg-accent-soft);
 }
 
 /* ---------- Move-menu overlay + dropdown ----------------- */
 
-/* Full-viewport transparent layer — click closes the menu */
+/* Full-viewport transparent layer — click anywhere to close */
 .schema-move-overlay {
   position: fixed;
   inset: 0;
@@ -912,10 +957,10 @@ body {
   right: 0;
   z-index: 100;
   min-width: 168px;
-  background: #1e2433;
-  border: 1px solid #2d3448;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-md);
   padding: 4px 0;
   overflow: hidden;
 }
@@ -926,7 +971,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #555e6e;
+  color: var(--text-tertiary);
   user-select: none;
 }
 
@@ -937,34 +982,37 @@ body {
   background: none;
   border: none;
   text-align: left;
-  color: #c8d0e0;
+  color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   transition: background 0.1s, color 0.1s;
   white-space: nowrap;
+  font-family: inherit;
 }
 
 .schema-move-menu-item:hover {
-  background: #252b3b;
-  color: #e8eaf0;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .schema-move-menu-item--active {
-  color: #00d4aa;
+  color: var(--accent-strong);
+  font-weight: 600;
 }
 
 .schema-move-menu-item--new {
-  color: #8892a4;
+  color: var(--text-tertiary);
   font-style: italic;
 }
 
 .schema-move-menu-item--new:hover {
-  color: #00d4aa;
+  color: var(--accent-strong);
+  background: var(--bg-accent-soft);
 }
 
 .schema-move-menu-divider {
   height: 1px;
-  background: #2d3448;
+  background: var(--border-subtle);
   margin: 3px 0;
 }
 
@@ -972,15 +1020,15 @@ body {
    Current folder highlight + controls
    ========================================================= */
 
-/* Teal accent when a custom folder is the current destination */
+/* Soft green bg + 3px emerald left border when a custom folder is active */
 .schema-folder-header-wrap--current {
-  border-left: 2px solid #00d4aa;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-accent-soft);
 }
 
-/* Compensate for the 2px border so text doesn't shift */
+/* Compensate for the 3px border so text doesn't shift (14px standard - 3px = 11px) */
 .schema-folder-header-wrap--current .schema-schema-row {
-  padding-left: 12px;
-  background: rgba(0, 212, 170, 0.04);
+  padding-left: 11px;
 }
 
 /* Keep all controls visible (not just on hover) when folder is current */
@@ -990,12 +1038,11 @@ body {
 
 /* Subtle highlight for "main" when it is the current destination */
 .schema-folder-header-wrap--main-current {
-  border-left: 2px solid #2d3448;
+  border-left: 3px solid var(--border-default);
 }
 
 .schema-folder-header-wrap--main-current .schema-schema-row {
-  padding-left: 12px;
-  background: rgba(255, 255, 255, 0.018);
+  padding-left: 11px;
 }
 
 .schema-folder-header-wrap--main-current .schema-folder-controls {
@@ -1008,24 +1055,24 @@ body {
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
-  color: #555e6e;
+  color: var(--text-tertiary);
 }
 
 .schema-folder-ctrl-btn--add-table:hover {
-  color: #00d4aa;
-  background: #252b3b;
+  color: var(--accent-strong);
+  background: var(--bg-accent-soft);
 }
 
 /* =========================================================
    Create Table Modal
    ========================================================= */
 
-/* Full-viewport dark overlay */
+/* Full-viewport overlay — semi-transparent dark layer */
 .ct-overlay {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(15, 23, 42, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1034,10 +1081,10 @@ body {
 
 /* Dialog box */
 .ct-dialog {
-  background: #1e2433;
-  border: 1px solid #2d3448;
-  border-radius: 8px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 560px;
   max-height: 90vh;
@@ -1053,36 +1100,36 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid #2d3448;
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .ct-title {
   font-size: 14px;
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .ct-folder-name {
-  color: #00d4aa;
+  color: var(--accent-strong);
 }
 
 .ct-close-btn {
   background: none;
   border: none;
-  color: #555e6e;
+  color: var(--text-tertiary);
   font-size: 14px;
   cursor: pointer;
   padding: 4px 6px;
   border-radius: 4px;
   line-height: 1;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.12s, background 0.12s;
 }
 
 .ct-close-btn:hover {
-  color: #e8eaf0;
-  background: #252b3b;
+  color: var(--text-primary);
+  background: var(--bg-subtle);
 }
 
 /* ── Error banner (backend error shown at top) ───────────── */
@@ -1090,12 +1137,12 @@ body {
 .ct-error-banner {
   margin: 12px 20px 0;
   padding: 8px 12px;
-  background: #2d1a1a;
-  border: 1px solid #7d2222;
-  border-left: 3px solid #e05252;
+  background: var(--danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-left: 3px solid var(--danger);
   border-radius: 4px;
   font-size: 12px;
-  color: #e05252;
+  color: var(--danger);
   line-height: 1.5;
 }
 
@@ -1118,7 +1165,7 @@ body {
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 20px;
-  border-top: 1px solid #2d3448;
+  border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -1133,51 +1180,55 @@ body {
 .ct-label {
   font-size: 11px;
   font-weight: 600;
-  color: #8892a4;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   user-select: none;
 }
 
 .ct-input {
-  background: #252b3b;
-  border: 1px solid #2d3448;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  color: #e8eaf0;
+  color: var(--text-primary);
   padding: 6px 9px;
   font-size: 13px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
 }
 
 .ct-input:focus {
-  border-color: #00d4aa;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
 .ct-input--error {
-  border-color: #e05252 !important;
+  border-color: var(--danger) !important;
 }
 
 .ct-select {
-  background: #252b3b;
-  border: 1px solid #2d3448;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
   border-radius: 4px;
-  color: #e8eaf0;
+  color: var(--text-primary);
   padding: 6px 8px;
   font-size: 12px;
   outline: none;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
+  font-family: inherit;
 }
 
 .ct-select:focus {
-  border-color: #00d4aa;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
 .ct-field-error {
   font-size: 11px;
-  color: #e05252;
+  color: var(--danger);
   line-height: 1.4;
 }
 
@@ -1216,7 +1267,7 @@ body {
   gap: 3px;
   cursor: pointer;
   font-size: 11px;
-  color: #8892a4;
+  color: var(--text-secondary);
   white-space: nowrap;
   user-select: none;
   flex-shrink: 0;
@@ -1226,25 +1277,25 @@ body {
   width: 13px;
   height: 13px;
   cursor: pointer;
-  accent-color: #00d4aa;
+  accent-color: var(--accent);
 }
 
 .ct-col-remove-btn {
   background: none;
   border: none;
-  color: #555e6e;
+  color: var(--text-tertiary);
   font-size: 11px;
   padding: 4px 6px;
   border-radius: 3px;
   cursor: pointer;
   flex-shrink: 0;
   line-height: 1;
-  transition: color 0.15s, background 0.15s;
+  transition: color 0.12s, background 0.12s;
 }
 
 .ct-col-remove-btn:hover:not(:disabled) {
-  color: #e05252;
-  background: #2d1a1a;
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .ct-col-remove-btn:disabled {
@@ -1255,18 +1306,20 @@ body {
 .ct-add-col-btn {
   align-self: flex-start;
   background: none;
-  border: 1px dashed #2d3448;
+  border: 1px dashed var(--border-default);
   border-radius: 4px;
-  color: #8892a4;
+  color: var(--text-secondary);
   padding: 5px 10px;
   font-size: 12px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  font-family: inherit;
 }
 
 .ct-add-col-btn:hover {
-  color: #00d4aa;
-  border-color: #00d4aa55;
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  background: var(--bg-accent-soft);
 }
 
 /* ── Show SQL toggle + preview ───────────────────────────── */
@@ -1277,23 +1330,23 @@ body {
   gap: 6px;
   cursor: pointer;
   font-size: 12px;
-  color: #8892a4;
+  color: var(--text-secondary);
   user-select: none;
 }
 
 .ct-show-sql-label input[type="checkbox"] {
-  accent-color: #00d4aa;
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
 .ct-sql-preview {
-  background: #1a1d27;
-  border: 1px solid #2d3448;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
   border-radius: 4px;
   padding: 10px 12px;
   font-family: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
   font-size: 12px;
-  color: #a8b8d0;
+  color: var(--text-secondary);
   white-space: pre;
   overflow-x: auto;
   line-height: 1.5;
@@ -1308,28 +1361,29 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  font-family: inherit;
 }
 
 .ct-btn--cancel {
-  background: none;
-  border: 1px solid #2d3448;
-  color: #8892a4;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
 }
 
 .ct-btn--cancel:hover {
-  background: #252b3b;
-  color: #e8eaf0;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
 }
 
 .ct-btn--create {
-  background: #00d4aa;
+  background: var(--accent);
   border: none;
-  color: #0d1117;
+  color: var(--text-on-accent);
 }
 
 .ct-btn--create:hover:not(:disabled) {
-  background: #00c49a;
+  background: var(--accent-hover);
 }
 
 .ct-btn--create:disabled {
@@ -1353,7 +1407,7 @@ body {
   width: 120px;
   height: 28px;
   border-radius: 4px;
-  background: #252b3b;
+  background: var(--bg-subtle);
   flex-shrink: 0;
 }
 
@@ -1372,7 +1426,8 @@ body {
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
-  background: #2d3448;
+  background: var(--bg-accent-soft);
+  border: 1px solid var(--accent-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1387,7 +1442,7 @@ body {
 .auth-avatar-initials {
   font-size: 11px;
   font-weight: 700;
-  color: #00d4aa;
+  color: var(--accent-strong);
   letter-spacing: 0.5px;
   line-height: 1;
 }
@@ -1395,7 +1450,7 @@ body {
 /* Display name */
 .auth-name {
   font-size: 13px;
-  color: #c8cdd8;
+  color: var(--text-secondary);
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1405,20 +1460,20 @@ body {
 /* Sign out button */
 .auth-signout-btn {
   font-size: 12px;
-  color: #8892a4;
+  color: var(--text-secondary);
   background: none;
-  border: 1px solid #2d3448;
+  border: 1px solid var(--border-default);
   border-radius: 4px;
   padding: 3px 10px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
   font-family: inherit;
   flex-shrink: 0;
 }
 
 .auth-signout-btn:hover {
-  color: #e8eaf0;
-  border-color: #8892a4;
+  color: var(--text-primary);
+  background: var(--bg-subtle);
 }
 
 /* ── Anonymous state ─────────────────────────────────────── */
@@ -1428,8 +1483,8 @@ body {
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
-  color: #1a1d27;
-  background: #00d4aa;
+  color: var(--text-on-accent);
+  background: var(--accent);
   border: none;
   border-radius: 5px;
   padding: 5px 14px;
@@ -1441,7 +1496,7 @@ body {
 }
 
 .auth-signin-btn:hover {
-  background: #00c49a;
+  background: var(--accent-hover);
 }
 
 /* =========================================================
@@ -1454,9 +1509,9 @@ body {
   justify-content: space-between;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(239, 68, 68, 0.12);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  background: var(--danger-soft);
+  border-bottom: 1px solid rgba(220, 38, 38, 0.2);
+  color: var(--danger);
   font-size: 11px;
   line-height: 1.4;
   flex-shrink: 0;
@@ -1465,7 +1520,7 @@ body {
 .schema-save-error-dismiss {
   background: none;
   border: none;
-  color: #fca5a5;
+  color: var(--danger);
   cursor: pointer;
   font-size: 10px;
   padding: 0 2px;
@@ -1487,19 +1542,19 @@ body {
   background: none;
   border: 1px solid transparent;
   border-radius: 4px;
-  color: #8892a4;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
   padding: 2px 5px;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
   font-family: inherit;
 }
 
 .schema-reset-btn:hover:not(:disabled) {
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.08);
+  color: var(--danger);
+  border-color: rgba(220, 38, 38, 0.3);
+  background: var(--danger-soft);
 }
 
 .schema-reset-btn:disabled {
@@ -1515,26 +1570,26 @@ body {
 /* Warning paragraph inside the dialog body */
 .schema-reset-warning {
   font-size: 13px;
-  color: #c8cdd8;
+  color: var(--text-secondary);
   line-height: 1.6;
 }
 
 .schema-reset-warning strong {
-  color: #fca5a5;
+  color: var(--danger);
 }
 
 .schema-reset-warning code {
   font-family: 'Courier New', Courier, monospace;
   font-size: 12px;
-  background: #252b3b;
+  background: var(--bg-subtle);
   padding: 1px 5px;
   border-radius: 3px;
-  color: #00d4aa;
+  color: var(--accent-strong);
 }
 
 /* Danger-red "Reset" button in the confirmation footer */
 .schema-reset-confirm-btn {
-  background: #ef4444;
+  background: var(--danger);
   color: #fff;
   border: none;
   border-radius: 5px;
@@ -1542,16 +1597,15 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.12s, opacity 0.12s;
   font-family: inherit;
 }
 
 .schema-reset-confirm-btn:hover:not(:disabled) {
-  background: #dc2626;
+  background: #b91c1c;
 }
 
 .schema-reset-confirm-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
-
