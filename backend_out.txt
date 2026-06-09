@@ -6,3 +6,67 @@ Django version 4.2.30, using settings 'ezsql_project.settings'
 Starting development server at http://127.0.0.1:8000/
 Quit the server with CTRL-BREAK.
 
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 01:46:15
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 01:47:55
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 02:12:02
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 20:48:41
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 20:49:09
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 20:49:14
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 21:41:32
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+
+Performing system checks...
+
+System check identified no issues (0 silenced).
+May 24, 2026 - 21:41:37
+Django version 4.2.30, using settings 'ezsql_project.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CTRL-BREAK.
+

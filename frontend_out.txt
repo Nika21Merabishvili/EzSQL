@@ -11,3 +11,8 @@ Port 5173 is in use, trying another one...
   [32m➜[39m  [1mNetwork[22m: [36mhttp://172.18.176.1:[1m5174[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.56.1:[1m5174[22m/[39m
   [32m➜[39m  [1mNetwork[22m: [36mhttp://10.151.6.194:[1m5174[22m/[39m
+[2m12:58:07 AM[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m12:58:07 AM[22m [36m[1m[vite][22m[39m server restarted.
+[2m1:51:49 AM[22m [36m[1m[vite][22m[39m [32mvite.config.js changed, restarting server...[39m
+[2m1:51:49 AM[22m [36m[1m[vite][22m[39m server restarted.
+[2m9:25:33 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m

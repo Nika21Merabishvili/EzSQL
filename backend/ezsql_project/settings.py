@@ -67,7 +67,7 @@ ROOT_URLCONF = 'ezsql_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -119,6 +119,11 @@ SOCIALACCOUNT_PROVIDERS = {
 # After a successful sign-in or sign-out, redirect to the React app root.
 LOGIN_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+
+# Skip the "Continue" confirmation page before Google OAuth redirect.
+SOCIALACCOUNT_LOGIN_ON_GET = True
+# Immediately log out on GET /accounts/logout/ — no confirmation page.
+ACCOUNT_LOGOUT_ON_GET = True
 
 # Email: Google already verifies the user's email — skip allauth's own verification.
 ACCOUNT_EMAIL_VERIFICATION = 'none'

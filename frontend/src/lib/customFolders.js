@@ -45,12 +45,22 @@ const EMPTY = () => ({ folders: [], assignments: {}, currentFolderId: null });
 let _state = null;          // in-memory cache; null = not yet initialised
 let _authenticated = false; // true when the user is signed in
 let _onError = null;        // (message: string | null) => void
+let _onRevert = null;       // (state: object) => void — called when a save is abandoned
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 
 /** Register a callback for background-save errors. null message = clear. */
 export function setErrorHandler(fn) {
   _onError = fn;
+}
+
+/**
+ * Register a callback invoked when a save permanently fails and the module
+ * reverts _state to the last known server state.  The UI should call
+ * syncFolders(state) to show what the server actually has.
+ */
+export function setRevertHandler(fn) {
+  _onRevert = fn;
 }
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
@@ -119,7 +129,15 @@ async function persistAsync(state) {
         await pushToAPI(state);
         _onError?.(null); // clear on successful retry
       } catch {
-        // Second failure — the error message stays visible.
+        // Second failure — revert to whatever the server actually has so the
+        // UI doesn't keep showing an unsaved optimistic change.
+        try {
+          const serverState = await fetchFromAPI();
+          _state = serverState;
+          _onRevert?.(serverState);
+        } catch {
+          // Can't reach the server at all — keep the error toast visible.
+        }
       }
     }
   } else {

@@ -200,6 +200,8 @@ const SchemaBrowser = forwardRef(function SchemaBrowser({ onInsertQuery }, ref) 
 
     // Register the save-error handler so background PUT failures surface.
     CF.setErrorHandler((msg) => setSaveError(msg));
+    // When a PUT permanently fails, revert the sidebar to actual server state.
+    CF.setRevertHandler((state) => syncFolders(state));
 
     const startup = async () => {
       // Reset the known-tables guard so auto-assignment doesn't fire on the
